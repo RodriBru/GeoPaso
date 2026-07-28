@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="focused-wizard" data-mobile-step="1">
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="#" aria-label="GeoPaso, inicio">
@@ -110,6 +110,7 @@
                 <p id="figureModeLabel">Esquema claro del ejercicio</p>
               </div>
               <div class="icon-actions" aria-label="Controles de la figura">
+                <button class="mobile-adjust-button" id="mobileAdjustButton" type="button" title="Mover puntos" aria-label="Mover puntos">✥</button>
                 <button id="zoomInButton" type="button" title="Acercar" aria-label="Acercar">＋</button>
                 <button id="zoomOutButton" type="button" title="Alejar" aria-label="Alejar">−</button>
                 <button id="fitButton" type="button" title="Centrar" aria-label="Centrar">⌗</button>
@@ -149,6 +150,17 @@
                 </g>
               </svg>
 
+              <div class="inline-measure-editor" id="inlineMeasureEditor" hidden>
+                <label id="inlineMeasureLabel" for="inlineMeasureInput">Editar medida</label>
+                <div>
+                  <input id="inlineMeasureInput" inputmode="decimal" autocomplete="off" aria-describedby="inlineMeasureHelp">
+                  <span id="inlineMeasureUnit">cm</span>
+                  <button id="inlineMeasureSave" type="button" aria-label="Guardar medida">✓</button>
+                  <button id="inlineMeasureCancel" type="button" aria-label="Cancelar edición">×</button>
+                </div>
+                <small id="inlineMeasureHelp">Escribí el valor y tocá ✓</small>
+              </div>
+
               <div class="drag-helper" id="dragHelper" hidden>
                 <strong>Modo ajuste</strong>
                 <span>Arrastrá los puntos para acomodar el dibujo. Los cálculos siguen usando los datos de la derecha.</span>
@@ -162,7 +174,7 @@
 
             <div class="tip-bar" id="figureTip" role="status">
               <span aria-hidden="true">💡</span>
-              <span>Todas las medidas subrayadas se pueden editar. “?” significa que falta el dato; si no lo escribís, GeoPaso intentará calcularlo con los demás.</span>
+              <span>Tocá una medida para editarla ahí mismo. “?” significa que falta el dato. Usá dos dedos para acercar o alejar la figura.</span>
             </div>
           </section>
 
@@ -335,6 +347,15 @@
       </div>
     </main>
   </div>
+
+  <nav class="mobile-wizard-nav" id="mobileWizardNav" aria-label="Navegación paso a paso" hidden>
+    <button class="mobile-back" id="mobileBackButton" type="button">← Atrás</button>
+    <div class="mobile-wizard-status">
+      <small id="mobileStepCount">Paso 1 de 4</small>
+      <strong id="mobileStepName">Cargar foto</strong>
+    </div>
+    <button class="mobile-next" id="mobileNextButton" type="button">Continuar →</button>
+  </nav>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>

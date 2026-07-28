@@ -31,8 +31,15 @@
     zoom: 1,
     toScale: false,
     drawMode: false,
+    mobileScreen: 1,
     points: null,
     draggedPoint: null,
+    inlineEditKey: null,
+    activePointers: new Map(),
+    pinchStartDistance: 0,
+    pinchStartZoom: 1,
+    pinchActive: false,
+    suppressNextClick: false,
     uploadedImageUrl: null
   };
 
@@ -58,6 +65,12 @@
     svg: $("#geometrySvg"),
     zoomLayer: $("#zoomLayer"),
     pointLayer: $("#pointLayer"),
+    inlineMeasureEditor: $("#inlineMeasureEditor"),
+    inlineMeasureLabel: $("#inlineMeasureLabel"),
+    inlineMeasureInput: $("#inlineMeasureInput"),
+    inlineMeasureUnit: $("#inlineMeasureUnit"),
+    inlineMeasureSave: $("#inlineMeasureSave"),
+    inlineMeasureCancel: $("#inlineMeasureCancel"),
     labels: $("#measureLabels"),
     rightAngles: $("#rightAngles"),
     angleArcs: $("#angleArcs"),
@@ -93,6 +106,12 @@
     nextStep: $("#nextStepButton"),
     scaleButton: $("#scaleButton"),
     editDataButton: $("#editDataButton"),
+    mobileWizardNav: $("#mobileWizardNav"),
+    mobileBackButton: $("#mobileBackButton"),
+    mobileNextButton: $("#mobileNextButton"),
+    mobileStepCount: $("#mobileStepCount"),
+    mobileStepName: $("#mobileStepName"),
+    mobileAdjustButton: $("#mobileAdjustButton"),
     toast: $("#toast")
   };
 
@@ -787,6 +806,7 @@
     });
 
     updateProgress(state.currentStep >= state.steps.length - 1 ? 4 : 3);
+    updateMobileWizardControls();
   }
 
   function renderMath(container, expression, fallback) {
@@ -832,6 +852,42 @@
       step.classList.toggle("is-active", number === active);
       step.classList.toggle("is-complete", number < active);
     });
+  }
+
+  function isMobileWizard() {
+    return document.body.classList.contains("focused-wizard");
+  }
+
+  function updateMobileWizardControls() {
+    if (!isMobileWizard()) return;
+    const names = ["Cargar foto", "Revisar figura y datos", "Explicación paso a paso", "Resultado final"];
+    elements.mobileStepCount.textContent = `Paso ${state.mobileScreen} de 4`;
+    elements.mobileStepName.textContent = state.mobileScreen === 3 && state.steps.length
+      ? `${state.currentStep + 1}/${state.steps.length} · ${state.steps[state.currentStep].title}`
+      : names[state.mobileScreen - 1];
+    elements.mobileBackButton.disabled = state.mobileScreen === 1;
+    if (state.mobileScreen === 1) elements.mobileNextButton.textContent = "Comparar →";
+    if (state.mobileScreen === 2) elements.mobileNextButton.textContent = "Resolver →";
+    if (state.mobileScreen === 3) elements.mobileNextButton.textContent = state.steps.length && state.currentStep >= state.steps.length - 1 ? "Ver resultado →" : "Siguiente cuenta →";
+    if (state.mobileScreen === 4) elements.mobileNextButton.textContent = "Editar datos";
+  }
+
+  function setMobileScreen(screen, scrollToTop = true) {
+    if (!isMobileWizard()) return;
+    state.mobileScreen = Math.max(1, Math.min(4, screen));
+    if (state.mobileScreen !== 2) closeInlineMeasureEditor();
+    document.body.dataset.mobileStep = String(state.mobileScreen);
+    updateProgress(state.mobileScreen);
+    updateMobileWizardControls();
+    if (scrollToTop) window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function syncMobileMode() {
+    const mobile = window.matchMedia("(max-width: 720px)").matches;
+    document.body.classList.add("focused-wizard");
+    document.body.classList.toggle("mobile-wizard", mobile);
+    elements.mobileWizardNav.hidden = false;
+    setMobileScreen(state.mobileScreen, false);
   }
 
   function setFormError(message, type = "error") {
@@ -925,7 +981,8 @@
       state.points = state.toScale ? scaledPoints(result) : schematicPoints();
       renderFigure();
       showToast("Figura resuelta. Empezamos por el primer triángulo.");
-      $("#explanationPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      if (isMobileWizard()) setMobileScreen(3);
+      else $("#explanationPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
     } catch (error) {
       blockSolution(error.message || "No pudimos resolver la figura con estos datos. Revisá las medidas ingresadas.");
     }
@@ -940,6 +997,7 @@
 
   function switchFigureTab(tab) {
     const showDiagram = tab === "diagram";
+    if (!showDiagram) closeInlineMeasureEditor();
     elements.diagramStage.hidden = !showDiagram;
     elements.photoStage.hidden = showDiagram;
     elements.diagramTab.classList.toggle("is-active", showDiagram);
@@ -959,10 +1017,14 @@
     state.toScale = false;
     state.drawMode = false;
     state.zoom = 1;
+    state.activePointers.clear();
+    state.pinchActive = false;
+    closeInlineMeasureEditor();
     elements.scaleButton.setAttribute("aria-pressed", "false");
     elements.dragHelper.hidden = true;
     elements.figureModeLabel.textContent = "Esquema claro del ejercicio";
     elements.zoomLayer.style.transform = "scale(1)";
+    elements.zoomLayer.style.transformOrigin = "center";
     elements.perimeterResult.textContent = "—";
     elements.areaResult.textContent = "—";
     elements.angleResults.innerHTML = "<span>∠A = —</span><span>∠B = —</span><span>∠D = —</span><span>∠E = —</span><span>∠F = —</span><span>Suma = —</span>";
@@ -1051,6 +1113,7 @@
   }
 
   function toggleDrawMode() {
+    closeInlineMeasureEditor();
     state.drawMode = !state.drawMode;
     elements.dragHelper.hidden = !state.drawMode;
     elements.figureModeLabel.textContent = state.drawMode ? "Ajustá los puntos arrastrándolos" : (state.toScale ? "Vista proporcional a las medidas" : "Esquema claro del ejercicio");
@@ -1060,11 +1123,16 @@
 
   function bindSelectableElements() {
     elements.svg.addEventListener("click", event => {
-      const editableMeasure = event.target.closest("[data-input-key]");
-      if (editableMeasure && !state.drawMode) {
-        focusEditableInput(editableMeasure.dataset.inputKey);
+      if (state.suppressNextClick) {
+        event.preventDefault();
         return;
       }
+      const editableMeasure = event.target.closest("[data-input-key]");
+      if (editableMeasure && !state.drawMode) {
+        openInlineMeasureEditor(editableMeasure.dataset.inputKey, event.clientX, event.clientY, editableMeasure);
+        return;
+      }
+      closeInlineMeasureEditor();
       const target = event.target.closest(".selectable, .point-dot");
       if (!target || state.drawMode) return;
       $$(".is-selected", elements.svg).forEach(node => node.classList.remove("is-selected"));
@@ -1076,9 +1144,61 @@
       const editableMeasure = event.target.closest("[data-input-key]");
       if (editableMeasure && (event.key === "Enter" || event.key === " ")) {
         event.preventDefault();
-        focusEditableInput(editableMeasure.dataset.inputKey);
+        openInlineMeasureEditor(editableMeasure.dataset.inputKey, null, null, editableMeasure);
       }
     });
+  }
+
+  function measureResultValue(key) {
+    if (!state.result) return null;
+    if (key === "angleA") return state.result.angles.angleA;
+    if (key === "angleB") return state.result.data.angleB;
+    if (key === "angleF") return state.result.data.angleF;
+    if (["AB", "DC", "DE"].includes(key)) return state.result.data[key];
+    return state.result.lengths[key] ?? null;
+  }
+
+  function openInlineMeasureEditor(key, clientX, clientY, target) {
+    const sourceInput = elements.inputs[key];
+    if (!sourceInput) return;
+    const labels = { angleA: "Ángulo A", angleB: "Ángulo B₁", angleF: "Ángulo F" };
+    const stageRect = elements.diagramStage.getBoundingClientRect();
+    const targetRect = target?.getBoundingClientRect();
+    const x = clientX ?? (targetRect ? targetRect.left + targetRect.width / 2 : stageRect.left + stageRect.width / 2);
+    const y = clientY ?? (targetRect ? targetRect.top + targetRect.height / 2 : stageRect.top + stageRect.height / 2);
+    const editorHalfWidth = Math.min(115, Math.max(70, stageRect.width / 2 - 8));
+    const relativeX = Math.max(editorHalfWidth, Math.min(stageRect.width - editorHalfWidth, x - stageRect.left));
+    const relativeY = Math.max(12, Math.min(stageRect.height - 12, y - stageRect.top));
+    const opensDown = relativeY < 118;
+
+    state.inlineEditKey = key;
+    elements.inlineMeasureLabel.textContent = `Editar ${labels[key] || key}`;
+    elements.inlineMeasureUnit.textContent = key.startsWith("angle") ? "°" : "cm";
+    const fallbackValue = measureResultValue(key);
+    elements.inlineMeasureInput.value = sourceInput.value.trim() || (Number.isFinite(fallbackValue) ? formatNumber(fallbackValue) : "");
+    elements.inlineMeasureInput.placeholder = "?";
+    elements.inlineMeasureEditor.style.left = `${relativeX}px`;
+    elements.inlineMeasureEditor.style.top = `${relativeY}px`;
+    elements.inlineMeasureEditor.classList.toggle("opens-down", opensDown);
+    elements.inlineMeasureEditor.hidden = false;
+    elements.inlineMeasureInput.focus({ preventScroll: true });
+    elements.inlineMeasureInput.select();
+    elements.figureTip.textContent = `Editando ${labels[key] || key} directamente sobre el dibujo.`;
+  }
+
+  function closeInlineMeasureEditor() {
+    state.inlineEditKey = null;
+    elements.inlineMeasureEditor.hidden = true;
+  }
+
+  function saveInlineMeasure() {
+    const key = state.inlineEditKey;
+    const sourceInput = key ? elements.inputs[key] : null;
+    if (!sourceInput) return;
+    sourceInput.value = elements.inlineMeasureInput.value.trim();
+    sourceInput.dispatchEvent(new Event("input", { bubbles: true }));
+    closeInlineMeasureEditor();
+    showToast(sourceInput.value.trim() ? `${key} actualizado. Tocá “Resolver” para comprobarlo.` : `${key} quedó sin dato.`);
   }
 
   function focusEditableInput(key) {
@@ -1087,6 +1207,7 @@
     if (["AC", "CB", "DB", "AD", "EB", "BF", "EF"].includes(key)) {
       $("#extraDataDetails").open = true;
     }
+    if (isMobileWizard()) setMobileScreen(2, false);
     $("#dataPanel").scrollIntoView({ behavior: "smooth", block: "center" });
     $$(".data-row").forEach(row => row.classList.toggle("is-editing", row.contains(input)));
     input.focus({ preventScroll: true });
@@ -1095,7 +1216,40 @@
   }
 
   function bindEvents() {
+    elements.svg.addEventListener("pointerdown", event => {
+      if (event.pointerType !== "touch") return;
+      state.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      try { elements.svg.setPointerCapture(event.pointerId); } catch (_) { /* no-op */ }
+      if (state.activePointers.size === 2) {
+        const [first, second] = [...state.activePointers.values()];
+        state.pinchStartDistance = Math.hypot(second.x - first.x, second.y - first.y);
+        state.pinchStartZoom = state.zoom;
+        state.pinchActive = true;
+        state.draggedPoint = null;
+        closeInlineMeasureEditor();
+        const rect = elements.svg.getBoundingClientRect();
+        const middleX = (first.x + second.x) / 2 - rect.left;
+        const middleY = (first.y + second.y) / 2 - rect.top;
+        elements.zoomLayer.style.transformOrigin = `${middleX / rect.width * 100}% ${middleY / rect.height * 100}%`;
+        elements.diagramStage.classList.add("is-pinching");
+      }
+    });
+
     elements.svg.addEventListener("pointermove", event => {
+      if (state.activePointers.has(event.pointerId)) {
+        state.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      }
+      if (state.pinchActive && state.activePointers.size >= 2) {
+        const [first, second] = [...state.activePointers.values()];
+        const distance = Math.hypot(second.x - first.x, second.y - first.y);
+        if (state.pinchStartDistance > 0) {
+          state.zoom = Math.max(.65, Math.min(2.5, state.pinchStartZoom * distance / state.pinchStartDistance));
+          elements.zoomLayer.style.transform = `scale(${state.zoom})`;
+          elements.figureModeLabel.textContent = `Zoom ${Math.round(state.zoom * 100)}% · usá dos dedos`;
+        }
+        event.preventDefault();
+        return;
+      }
       if (!state.drawMode || !state.draggedPoint) return;
       const point = clientToSvg(event.clientX, event.clientY);
       state.points[state.draggedPoint] = {
@@ -1105,12 +1259,37 @@
       renderFigure();
     });
     elements.svg.addEventListener("pointerup", event => {
+      state.activePointers.delete(event.pointerId);
+      if (state.pinchActive && state.activePointers.size < 2) {
+        state.pinchActive = false;
+        state.pinchStartDistance = 0;
+        state.suppressNextClick = true;
+        elements.diagramStage.classList.remove("is-pinching");
+        setTimeout(() => { state.suppressNextClick = false; }, 350);
+      }
       state.draggedPoint = null;
       try { elements.svg.releasePointerCapture(event.pointerId); } catch (_) { /* no-op */ }
     });
-    elements.svg.addEventListener("pointercancel", () => { state.draggedPoint = null; });
+    elements.svg.addEventListener("pointercancel", event => {
+      state.activePointers.delete(event.pointerId);
+      state.draggedPoint = null;
+      if (state.activePointers.size < 2) {
+        state.pinchActive = false;
+        elements.diagramStage.classList.remove("is-pinching");
+      }
+    });
 
     elements.form.addEventListener("submit", solve);
+    elements.inlineMeasureSave.addEventListener("click", saveInlineMeasure);
+    elements.inlineMeasureCancel.addEventListener("click", closeInlineMeasureEditor);
+    elements.inlineMeasureInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        saveInlineMeasure();
+      } else if (event.key === "Escape") {
+        closeInlineMeasureEditor();
+      }
+    });
     Object.values(elements.inputs).forEach(input => {
       input.addEventListener("focus", () => {
         $$(".data-row").forEach(row => row.classList.toggle("is-editing", row.contains(input)));
@@ -1140,6 +1319,7 @@
     $("#usePhotoButton").addEventListener("click", () => elements.photoInput.click());
     elements.photoInput.addEventListener("change", event => handleFile(event.target.files[0]));
     $("#drawButton").addEventListener("click", toggleDrawMode);
+    elements.mobileAdjustButton.addEventListener("click", toggleDrawMode);
     $("#exampleButton").addEventListener("click", resetExample);
     $("#detectDataButton").addEventListener("click", detectPromptData);
 
@@ -1147,16 +1327,17 @@
     elements.photoTab.addEventListener("click", () => switchFigureTab("photo"));
 
     $("#zoomInButton").addEventListener("click", () => {
-      state.zoom = Math.min(1.55, state.zoom + .12);
+      state.zoom = Math.min(2.5, state.zoom + .15);
       elements.zoomLayer.style.transform = `scale(${state.zoom})`;
     });
     $("#zoomOutButton").addEventListener("click", () => {
-      state.zoom = Math.max(.7, state.zoom - .12);
+      state.zoom = Math.max(.65, state.zoom - .15);
       elements.zoomLayer.style.transform = `scale(${state.zoom})`;
     });
     $("#fitButton").addEventListener("click", () => {
       state.zoom = 1;
       elements.zoomLayer.style.transform = "scale(1)";
+      elements.zoomLayer.style.transformOrigin = "center";
       state.points = state.toScale ? scaledPoints(state.result) : schematicPoints();
       renderFigure();
     });
@@ -1174,6 +1355,7 @@
     elements.nextStep.addEventListener("click", () => renderStep(state.currentStep + 1));
     elements.printButton.addEventListener("click", () => window.print());
     elements.editDataButton.addEventListener("click", () => {
+      if (isMobileWizard()) setMobileScreen(2);
       $("#dataPanel").scrollIntoView({ behavior: "smooth", block: "center" });
       elements.inputs.AB.focus({ preventScroll: true });
       elements.inputs.AB.select();
@@ -1183,15 +1365,54 @@
     $$(".progress-step").forEach(step => {
       step.addEventListener("click", () => {
         const number = Number(step.dataset.progress);
+        if (isMobileWizard()) {
+          if (number >= 3 && !state.result) {
+            setMobileScreen(2);
+            showToast("Primero revisá los datos y tocá “Resolver”.");
+          } else {
+            setMobileScreen(number);
+          }
+          return;
+        }
         const target = number === 1 ? $("#figurePanel") : number === 2 ? $("#dataPanel") : number === 3 ? $("#explanationPanel") : $("#resultsPanel");
         target?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     });
+
+    elements.mobileBackButton.addEventListener("click", () => {
+      if (state.mobileScreen === 3 && state.currentStep > 0) {
+        renderStep(state.currentStep - 1);
+      } else if (state.mobileScreen > 1) {
+        setMobileScreen(state.mobileScreen - 1);
+      }
+    });
+
+    elements.mobileNextButton.addEventListener("click", () => {
+      if (state.mobileScreen === 1) {
+        setMobileScreen(2);
+      } else if (state.mobileScreen === 2) {
+        elements.form.requestSubmit();
+      } else if (state.mobileScreen === 3) {
+        if (!state.result || !state.steps.length) {
+          setMobileScreen(2);
+          showToast("Primero resolvé la figura.");
+        } else if (state.currentStep < state.steps.length - 1) {
+          renderStep(state.currentStep + 1);
+        } else {
+          setMobileScreen(4);
+        }
+      } else {
+        setMobileScreen(2);
+      }
+    });
+
+    window.matchMedia("(max-width: 720px)").addEventListener("change", syncMobileMode);
 
     bindSelectableElements();
   }
 
   state.points = schematicPoints();
   bindEvents();
+  syncMobileMode();
   renderFigure();
 })();
