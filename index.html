@@ -65,6 +65,11 @@
             </div>
           </div>
 
+          <div class="start-mode-choice">
+            <div class="start-mode-current"><span>📷</span><div><strong>Resolver mi ejercicio</strong><small>Cargá una foto y seguí los pasos.</small></div></div>
+            <button id="learnModeButton" type="button"><span>🎓</span><div><strong>Aprender desde cero</strong><small>Empezá por lo más fácil, sin conocimientos previos.</small></div><b>→</b></button>
+          </div>
+
           <div class="preview-card" id="previewCard">
             <img id="photoThumbnail" src="assets/ejercicio-referencia.jpg" alt="Foto original del ejercicio de geometría">
             <div class="preview-shade"></div>
@@ -251,6 +256,25 @@
                 <div><h2>Explicación</h2><p>Una cuenta por vez, sin saltos mágicos.</p></div>
               </div>
 
+              <div class="step-visual-card" id="stepVisualCard">
+                <div class="step-visual-heading"><span>👀 Mirá esta parte</span><strong id="stepVisualCaption">Triángulo que usamos en este paso</strong></div>
+                <svg id="stepVisualSvg" viewBox="0 0 300 210" role="img" aria-label="Referencia visual del paso actual">
+                  <polygon class="step-region region-acb" points="150,22 150,100 246,100"/>
+                  <polygon class="step-region region-acd" points="150,22 150,100 44,100"/>
+                  <polygon class="step-region region-dbe" points="44,100 246,100 44,186"/>
+                  <polygon class="step-region region-ebf" points="44,186 246,100 262,186"/>
+                  <polyline class="step-outer" points="150,22 246,100 262,186 44,186 44,100 150,22"/>
+                  <line class="step-inner" x1="150" y1="22" x2="150" y2="100"/>
+                  <line class="step-inner" x1="44" y1="100" x2="246" y2="100"/>
+                  <line class="step-inner" x1="44" y1="186" x2="246" y2="100"/>
+                  <path class="step-right" d="M138 100V88H150 M44 112H56V100 M44 174H56V186"/>
+                  <g class="step-points">
+                    <circle cx="150" cy="22" r="3"/><circle cx="246" cy="100" r="3"/><circle cx="150" cy="100" r="3"/><circle cx="44" cy="100" r="3"/><circle cx="44" cy="186" r="3"/><circle cx="262" cy="186" r="3"/>
+                    <text x="150" y="14">A</text><text x="258" y="101">B</text><text x="150" y="116">C</text><text x="32" y="102">D</text><text x="32" y="190">E</text><text x="274" y="190">F</text>
+                  </g>
+                </svg>
+              </div>
+
               <div class="step-card" id="stepCard">
                 <div class="step-copy">
                   <span class="step-badge" id="stepBadge">Antes de empezar</span>
@@ -346,6 +370,33 @@
         </section>
       </div>
     </main>
+
+    <section class="learning-panel" id="learningPanel" hidden>
+      <header class="learning-header">
+        <button id="exitLearningButton" type="button">← Volver al solucionador</button>
+        <div><small id="lessonCounter">Lección 1 de 6</small><strong id="lessonProgressText">Empezamos por lo básico</strong></div>
+      </header>
+      <div class="learning-progress" id="learningProgress" aria-label="Progreso del curso"></div>
+      <article class="lesson-card">
+        <div class="lesson-visual" id="lessonVisual" aria-hidden="true"></div>
+        <div class="lesson-content">
+          <span class="lesson-level" id="lessonLevel">Nivel inicial</span>
+          <h1 id="lessonTitle">¿Qué es un triángulo?</h1>
+          <p class="lesson-intro" id="lessonIntro"></p>
+          <div class="lesson-key" id="lessonKey"></div>
+          <div class="lesson-example">
+            <span>Ejemplo de cuaderno</span>
+            <div id="lessonFormula"></div>
+            <p id="lessonExplanation"></p>
+          </div>
+          <div class="lesson-check" id="lessonCheck"></div>
+        </div>
+      </article>
+      <nav class="lesson-controls" aria-label="Navegación de lecciones">
+        <button id="previousLessonButton" type="button">← Anterior</button>
+        <button id="nextLessonButton" type="button">Siguiente lección →</button>
+      </nav>
+    </section>
   </div>
 
   <nav class="mobile-wizard-nav" id="mobileWizardNav" aria-label="Navegación paso a paso" hidden>

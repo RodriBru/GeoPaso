@@ -24,6 +24,81 @@
   const ANGLE_TOLERANCE = 0.05;
   const GIVEN_ANGLE_TOLERANCE = 0.5;
 
+  const lessons = [
+    {
+      level: "Nivel inicial",
+      progress: "Empezamos por lo básico",
+      title: "Partes de un triángulo",
+      intro: "Un triángulo tiene 3 vértices, 3 lados y 3 ángulos. Las letras mayúsculas nombran los puntos; dos letras juntas nombran el lado que une esos puntos.",
+      key: "AB es el lado que va desde A hasta B. ∠A significa “el ángulo que está en A”.",
+      formula: "Vértices: A, B, C\nLados: AB, BC, CA\nÁngulos: ∠A, ∠B, ∠C",
+      math: "",
+      explanation: "Antes de calcular, señalá qué números son lados y cuáles son ángulos. Eso evita usar una fórmula con el dato equivocado.",
+      check: "Pregunta rápida: si ves “AC = 6 cm”, ¿qué une? Une el punto A con el punto C.",
+      visual: "parts"
+    },
+    {
+      level: "Nivel inicial",
+      progress: "Primera regla fundamental",
+      title: "Los ángulos suman 180°",
+      intro: "Los tres ángulos interiores de cualquier triángulo siempre suman 180°. Si conocemos dos, podemos hallar el tercero con una resta.",
+      key: "Dos ángulos no tienen que sumar 180° por sí solos: deben dejar espacio para el tercero.",
+      formula: "∠C = 180° − ∠A − ∠B\n∠C = 180° − 50° − 60°\n∠C = 70°",
+      math: String.raw`\angle C=180^\circ-50^\circ-60^\circ=70^\circ`,
+      explanation: "Si los dos ángulos conocidos ya suman 180° o más, el triángulo es imposible. Si suman menos, la diferencia es el ángulo faltante.",
+      check: "Comprobación: 50° + 60° + 70° = 180°. La respuesta tiene sentido.",
+      visual: "angles"
+    },
+    {
+      level: "Nivel básico",
+      progress: "Calculamos lados",
+      title: "Pitágoras en triángulos rectángulos",
+      intro: "Un ángulo recto mide 90°. El lado que queda enfrente se llama hipotenusa y siempre es el lado más largo.",
+      key: "Pitágoras solo se usa directamente en triángulos rectángulos: hipotenusa² = cateto² + cateto².",
+      formula: "c² = a² + b²\nc² = 3² + 4²\nc² = 9 + 16 = 25\nc = 5 cm",
+      math: String.raw`c=\sqrt{3^2+4^2}=5\ \mathrm{cm}`,
+      explanation: "Primero elevamos cada cateto al cuadrado, sumamos y finalmente calculamos la raíz cuadrada.",
+      check: "Control útil: la hipotenusa 5 cm es mayor que los catetos 3 cm y 4 cm.",
+      visual: "pythagoras"
+    },
+    {
+      level: "Nivel intermedio",
+      progress: "Relacionamos lados y ángulos",
+      title: "Seno, coseno y tangente",
+      intro: "Estas razones permiten conectar un ángulo con los lados de un triángulo rectángulo. Siempre se nombran respecto del ángulo que estamos mirando.",
+      key: "SOH–CAH–TOA: seno = opuesto/hipotenusa; coseno = adyacente/hipotenusa; tangente = opuesto/adyacente.",
+      formula: "sen(θ) = opuesto ÷ hipotenusa\ncos(θ) = adyacente ÷ hipotenusa\ntan(θ) = opuesto ÷ adyacente",
+      math: String.raw`\operatorname{sen}(\theta)=\frac{\mathrm{opuesto}}{\mathrm{hipotenusa}}\quad \cos(\theta)=\frac{\mathrm{adyacente}}{\mathrm{hipotenusa}}`,
+      explanation: "Marcá el ángulo θ. El lado que no lo toca es el opuesto; el cateto que sí lo toca es el adyacente.",
+      check: "No memorices solo letras: mirá el dibujo y nombrá primero hipotenusa, opuesto y adyacente.",
+      visual: "trig"
+    },
+    {
+      level: "Nivel intermedio",
+      progress: "Unimos varios triángulos",
+      title: "Figuras compuestas y perímetro",
+      intro: "Una figura difícil se vuelve más fácil cuando la dividimos en triángulos conocidos. Cada resultado puede convertirse en un dato para el triángulo siguiente.",
+      key: "Para el perímetro sumamos únicamente los lados del contorno. Las líneas interiores ayudan a calcular, pero no se suman.",
+      formula: "P = AB + BF + FE + ED + DA",
+      math: String.raw`P=AB+BF+FE+ED+DA`,
+      explanation: "Recorré el borde con el dedo. Si una línea queda dentro de la figura, como AC o EB, no pertenece al perímetro.",
+      check: "Estrategia: resolvé primero el triángulo con más datos y avanzá hacia los demás.",
+      visual: "compound"
+    },
+    {
+      level: "Nivel avanzado",
+      progress: "Resolvemos y comprobamos",
+      title: "Área y comprobación final",
+      intro: "El área mide la superficie interior. En una figura compuesta calculamos cada región sin superponerlas y luego sumamos.",
+      key: "Una respuesta completa incluye unidades: longitudes en cm y áreas en cm².",
+      formula: "Área del triángulo = base × altura ÷ 2\nÁrea total = A₁ + A₂ + A₃",
+      math: String.raw`A_{\triangle}=\frac{b\cdot h}{2}\qquad A_{\mathrm{total}}=A_1+A_2+A_3`,
+      explanation: "Al terminar, comprobá ángulos, longitudes posibles, unidades y si el resultado coincide aproximadamente con el dibujo.",
+      check: "Ya podés volver al solucionador: GeoPaso te mostrará estas mismas ideas aplicadas a tu ejercicio.",
+      visual: "area"
+    }
+  ];
+
   const state = {
     result: null,
     steps: [],
@@ -32,6 +107,7 @@
     toScale: false,
     drawMode: false,
     mobileScreen: 1,
+    learningLesson: 0,
     points: null,
     draggedPoint: null,
     inlineEditKey: null,
@@ -108,6 +184,8 @@
     stepRule: $("#stepRule"),
     stepFormula: $("#stepFormula"),
     stepResult: $("#stepResult"),
+    stepVisualCard: $("#stepVisualCard"),
+    stepVisualCaption: $("#stepVisualCaption"),
     stepDots: $("#stepDots"),
     previousStep: $("#previousStepButton"),
     nextStep: $("#nextStepButton"),
@@ -119,6 +197,22 @@
     mobileStepCount: $("#mobileStepCount"),
     mobileStepName: $("#mobileStepName"),
     mobileAdjustButton: $("#mobileAdjustButton"),
+    learningPanel: $("#learningPanel"),
+    learnModeButton: $("#learnModeButton"),
+    exitLearningButton: $("#exitLearningButton"),
+    lessonCounter: $("#lessonCounter"),
+    lessonProgressText: $("#lessonProgressText"),
+    learningProgress: $("#learningProgress"),
+    lessonVisual: $("#lessonVisual"),
+    lessonLevel: $("#lessonLevel"),
+    lessonTitle: $("#lessonTitle"),
+    lessonIntro: $("#lessonIntro"),
+    lessonKey: $("#lessonKey"),
+    lessonFormula: $("#lessonFormula"),
+    lessonExplanation: $("#lessonExplanation"),
+    lessonCheck: $("#lessonCheck"),
+    previousLessonButton: $("#previousLessonButton"),
+    nextLessonButton: $("#nextLessonButton"),
     toast: $("#toast")
   };
 
@@ -794,6 +888,7 @@
     if (!state.steps.length) return;
     state.currentStep = Math.max(0, Math.min(index, state.steps.length - 1));
     const step = state.steps[state.currentStep];
+    renderStepVisual(step);
     elements.stepBadge.textContent = `Paso ${state.currentStep + 1} de ${state.steps.length}`;
     elements.stepTitle.textContent = step.title;
     renderKnownChips(step.givens || [{ text: step.known, tone: "dark" }]);
@@ -816,6 +911,36 @@
     updateMobileWizardControls();
   }
 
+  function renderStepVisual(step) {
+    const title = step.title.toLowerCase();
+    let mode = "area";
+    let caption = "La figura completa y sus triángulos auxiliares.";
+    if (title.includes("acb")) {
+      mode = "acb";
+      caption = "Trabajamos solamente con △ACB, resaltado en azul.";
+    } else if (title.includes("ad y") || title.includes("acd")) {
+      mode = "acd";
+      caption = "Ahora miramos △ACD, resaltado en rojo.";
+    } else if (title.includes("dbe")) {
+      mode = "dbe";
+      caption = "Usamos △DBE, resaltado en verde.";
+    } else if (title.includes("ebf")) {
+      mode = "ebf";
+      caption = "Usamos △EBF, resaltado en naranja.";
+    } else if (title.includes("perímetro")) {
+      mode = "perimeter";
+      caption = "Solo sumamos el borde exterior violeta.";
+    } else if (title.includes("área")) {
+      mode = "area";
+      caption = "Sumamos las regiones coloreadas sin superponerlas.";
+    } else if (title.includes("ángulos")) {
+      mode = "angles";
+      caption = "Comprobamos los cinco ángulos del contorno.";
+    }
+    elements.stepVisualCard.className = `step-visual-card mode-${mode}`;
+    elements.stepVisualCaption.textContent = caption;
+  }
+
   function renderMath(container, expression, fallback) {
     container.textContent = fallback;
     if (!expression || !window.katex) return;
@@ -829,6 +954,89 @@
     } catch (_) {
       container.textContent = fallback;
     }
+  }
+
+  function lessonVisualMarkup(type) {
+    const commonStart = '<svg viewBox="0 0 360 300" role="img" aria-label="Ejemplo visual de la lección" xmlns="http://www.w3.org/2000/svg">';
+    const commonEnd = '</svg>';
+    const visuals = {
+      parts: `${commonStart}
+        <polygon points="180,36 48,248 318,248" fill="#e7f0ff" stroke="#2468f2" stroke-width="6" stroke-linejoin="round"/>
+        <circle cx="180" cy="36" r="9" fill="#7352d9"/><circle cx="48" cy="248" r="9" fill="#7352d9"/><circle cx="318" cy="248" r="9" fill="#7352d9"/>
+        <g fill="#263653" font-family="system-ui" font-size="22" font-weight="800"><text x="180" y="25" text-anchor="middle">A</text><text x="27" y="273">B</text><text x="323" y="273">C</text></g>
+        <g fill="#2468f2" font-family="system-ui" font-size="17" font-weight="750"><text x="100" y="137" transform="rotate(-58 100 137)">lado AB</text><text x="226" y="140" transform="rotate(58 226 140)">lado AC</text><text x="183" y="276" text-anchor="middle">lado BC</text></g>
+        <path d="M73 248 A25 25 0 0 1 62 227" fill="none" stroke="#ed8b21" stroke-width="6"/><text x="79" y="228" fill="#a9600d" font-family="system-ui" font-size="17" font-weight="800">∠B</text>
+      ${commonEnd}`,
+      angles: `${commonStart}
+        <polygon points="180,35 43,252 322,252" fill="#fff" stroke="#34425e" stroke-width="5" stroke-linejoin="round"/>
+        <path d="M153 78 A48 48 0 0 1 207 78" fill="none" stroke="#7352d9" stroke-width="8"/><path d="M78 252 A35 35 0 0 1 62 220" fill="none" stroke="#2468f2" stroke-width="8"/><path d="M286 252 A36 36 0 0 1 306 219" fill="none" stroke="#ed8b21" stroke-width="8"/>
+        <g font-family="system-ui" font-size="20" font-weight="850"><text x="180" y="96" text-anchor="middle" fill="#7352d9">70°</text><text x="82" y="226" fill="#2468f2">50°</text><text x="258" y="226" fill="#b66a14">60°</text></g>
+        <rect x="69" y="268" width="222" height="28" rx="14" fill="#e8f7f1"/><text x="180" y="288" text-anchor="middle" fill="#137452" font-family="system-ui" font-size="16" font-weight="850">50° + 60° + 70° = 180°</text>
+      ${commonEnd}`,
+      pythagoras: `${commonStart}
+        <polygon points="70,242 70,70 294,242" fill="#e8f7f1" stroke="#129a68" stroke-width="6" stroke-linejoin="round"/><path d="M70 215 L97 215 L97 242" fill="none" stroke="#34425e" stroke-width="5"/>
+        <g font-family="system-ui" font-size="21" font-weight="850"><text x="44" y="162" fill="#2468f2">3</text><text x="177" y="273" fill="#ed8b21">4</text><text x="200" y="143" transform="rotate(38 200 143)" fill="#7352d9">5 (hipotenusa)</text></g>
+        <text x="180" y="35" text-anchor="middle" fill="#263653" font-family="system-ui" font-size="19" font-weight="850">3² + 4² = 5²</text>
+      ${commonEnd}`,
+      trig: `${commonStart}
+        <polygon points="58,246 58,63 314,246" fill="#fff" stroke="#34425e" stroke-width="5" stroke-linejoin="round"/><path d="M58 219 L85 219 L85 246" fill="none" stroke="#34425e" stroke-width="4"/><path d="M273 246 A42 42 0 0 1 280 222" fill="none" stroke="#7352d9" stroke-width="7"/>
+        <text x="276" y="220" fill="#7352d9" font-family="system-ui" font-size="24" font-weight="850">θ</text><text x="31" y="157" fill="#2468f2" font-family="system-ui" font-size="18" font-weight="850" transform="rotate(-90 31 157)">opuesto</text><text x="178" y="275" text-anchor="middle" fill="#ed8b21" font-family="system-ui" font-size="18" font-weight="850">adyacente</text><text x="190" y="137" fill="#129a68" font-family="system-ui" font-size="18" font-weight="850" transform="rotate(36 190 137)">hipotenusa</text>
+      ${commonEnd}`,
+      compound: `${commonStart}
+        <polygon points="174,33 302,145 326,259 55,259 55,145" fill="#f7f3ff" stroke="#7352d9" stroke-width="8" stroke-linejoin="round"/>
+        <line x1="174" y1="33" x2="174" y2="145" stroke="#9aa8be" stroke-width="4" stroke-dasharray="8 7"/><line x1="55" y1="145" x2="302" y2="145" stroke="#9aa8be" stroke-width="4" stroke-dasharray="8 7"/><line x1="55" y1="259" x2="302" y2="145" stroke="#9aa8be" stroke-width="4" stroke-dasharray="8 7"/>
+        <text x="180" y="292" text-anchor="middle" fill="#7352d9" font-family="system-ui" font-size="17" font-weight="850">Perímetro = solo el borde violeta</text>
+      ${commonEnd}`,
+      area: `${commonStart}
+        <polygon points="174,33 174,145 55,145" fill="#efc9ce" stroke="#df3f4b" stroke-width="3"/><polygon points="174,33 302,145 174,145" fill="#c9dbff" stroke="#2468f2" stroke-width="3"/><polygon points="55,145 302,145 55,259" fill="#c6eadc" stroke="#129a68" stroke-width="3"/><polygon points="55,259 302,145 326,259" fill="#f8dfb9" stroke="#ed8b21" stroke-width="3"/>
+        <polygon points="174,33 302,145 326,259 55,259 55,145" fill="none" stroke="#34425e" stroke-width="5" stroke-linejoin="round"/>
+        <g fill="#263653" font-family="system-ui" font-size="18" font-weight="850"><text x="115" y="112">A₁</text><text x="228" y="112">A₂</text><text x="112" y="196">A₃</text><text x="250" y="226">A₄</text></g><text x="180" y="292" text-anchor="middle" fill="#263653" font-family="system-ui" font-size="17" font-weight="850">Área total = A₁ + A₂ + A₃ + A₄</text>
+      ${commonEnd}`
+    };
+    return visuals[type] || visuals.parts;
+  }
+
+  function renderLesson(index) {
+    state.learningLesson = Math.max(0, Math.min(index, lessons.length - 1));
+    const lesson = lessons[state.learningLesson];
+    elements.lessonCounter.textContent = `Lección ${state.learningLesson + 1} de ${lessons.length}`;
+    elements.lessonProgressText.textContent = lesson.progress;
+    elements.lessonVisual.innerHTML = lessonVisualMarkup(lesson.visual);
+    elements.lessonLevel.textContent = lesson.level;
+    elements.lessonTitle.textContent = lesson.title;
+    elements.lessonIntro.textContent = lesson.intro;
+    elements.lessonKey.textContent = lesson.key;
+    renderMath(elements.lessonFormula, lesson.math, lesson.formula);
+    elements.lessonExplanation.textContent = lesson.explanation;
+    elements.lessonCheck.textContent = lesson.check;
+
+    elements.learningProgress.replaceChildren();
+    lessons.forEach((item, lessonIndex) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = lessonIndex === state.learningLesson ? "is-active" : lessonIndex < state.learningLesson ? "is-complete" : "";
+      button.setAttribute("aria-label", `Ir a la lección ${lessonIndex + 1}: ${item.title}`);
+      button.addEventListener("click", () => renderLesson(lessonIndex));
+      elements.learningProgress.append(button);
+    });
+    elements.previousLessonButton.disabled = state.learningLesson === 0;
+    elements.nextLessonButton.textContent = state.learningLesson === lessons.length - 1 ? "Volver y resolver →" : "Siguiente lección →";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openLearningMode() {
+    closeInlineMeasureEditor();
+    document.body.classList.add("learning-mode");
+    elements.learningPanel.hidden = false;
+    renderLesson(0);
+  }
+
+  function closeLearningMode() {
+    document.body.classList.remove("learning-mode");
+    elements.learningPanel.hidden = true;
+    state.mobileScreen = 1;
+    syncMobileMode();
+    setMobileScreen(1);
   }
 
   function renderKnownChips(givens) {
@@ -1225,8 +1433,10 @@
 
   function clampPan() {
     const rect = elements.svg.getBoundingClientRect();
-    const maxX = Math.max(0, rect.width * (state.zoom - 1) / (2 * state.zoom));
-    const maxY = Math.max(0, rect.height * (state.zoom - 1) / (2 * state.zoom));
+    // Dejamos un recorrido amplio incluso con poco zoom. Si la figura se aleja,
+    // el botón “Centrar” siempre permite recuperarla en un toque.
+    const maxX = rect.width * 1.35;
+    const maxY = rect.height * 1.2;
     state.panX = Math.max(-maxX, Math.min(maxX, state.panX));
     state.panY = Math.max(-maxY, Math.min(maxY, state.panY));
   }
@@ -1235,7 +1445,7 @@
     clampPan();
     elements.zoomLayer.style.transformOrigin = "center";
     elements.zoomLayer.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;
-    elements.diagramStage.classList.toggle("can-pan", state.zoom > 1.01);
+    elements.diagramStage.classList.add("can-pan");
   }
 
   function pointerMidpoint(first, second) {
@@ -1243,11 +1453,19 @@
   }
 
   function bindEvents() {
+    elements.learnModeButton.addEventListener("click", openLearningMode);
+    elements.exitLearningButton.addEventListener("click", closeLearningMode);
+    elements.previousLessonButton.addEventListener("click", () => renderLesson(state.learningLesson - 1));
+    elements.nextLessonButton.addEventListener("click", () => {
+      if (state.learningLesson >= lessons.length - 1) closeLearningMode();
+      else renderLesson(state.learningLesson + 1);
+    });
+
     elements.svg.addEventListener("pointerdown", event => {
       if (event.pointerType !== "touch") return;
       state.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       try { elements.svg.setPointerCapture(event.pointerId); } catch (_) { /* no-op */ }
-      if (state.activePointers.size === 1 && state.zoom > 1.01 && !state.drawMode) {
+      if (state.activePointers.size === 1 && !state.drawMode) {
         state.singlePan = {
           pointerId: event.pointerId,
           startX: event.clientX,
@@ -1291,7 +1509,7 @@
         event.preventDefault();
         return;
       }
-      if (state.singlePan && state.singlePan.pointerId === event.pointerId && state.zoom > 1.01 && !state.drawMode) {
+      if (state.singlePan && state.singlePan.pointerId === event.pointerId && !state.drawMode) {
         const dx = event.clientX - state.singlePan.startX;
         const dy = event.clientY - state.singlePan.startY;
         if (!state.panActive && Math.hypot(dx, dy) > 6) {
