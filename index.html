@@ -162,7 +162,7 @@
 
             <div class="tip-bar" id="figureTip" role="status">
               <span aria-hidden="true">💡</span>
-              <span>Hacé clic en un lado, un ángulo o un punto para resaltarlo.</span>
+              <span>Todas las medidas subrayadas se pueden editar. “?” significa que falta el dato; si no lo escribís, GeoPaso intentará calcularlo con los demás.</span>
             </div>
           </section>
 
@@ -177,40 +177,54 @@
                 <div class="data-row length-row">
                   <span class="datum-icon">▥</span>
                   <label for="inputAB">AB =</label>
-                  <input id="inputAB" name="AB" inputmode="decimal" value="9,37" autocomplete="off">
+                  <input id="inputAB" name="AB" inputmode="decimal" value="9,37" placeholder="Falta el dato" autocomplete="off">
                   <span class="unit">cm</span>
                 </div>
                 <div class="data-row length-row">
                   <span class="datum-icon">▥</span>
                   <label for="inputDC">DC =</label>
-                  <input id="inputDC" name="DC" inputmode="decimal" value="6,92" autocomplete="off">
+                  <input id="inputDC" name="DC" inputmode="decimal" value="6,92" placeholder="Falta el dato" autocomplete="off">
                   <span class="unit">cm</span>
                 </div>
                 <div class="data-row length-row">
                   <span class="datum-icon">▥</span>
                   <label for="inputDE">DE =</label>
-                  <input id="inputDE" name="DE" inputmode="decimal" value="5,16" autocomplete="off">
+                  <input id="inputDE" name="DE" inputmode="decimal" value="5,16" placeholder="Falta el dato" autocomplete="off">
                   <span class="unit">cm</span>
                 </div>
                 <div class="data-row angle-row orange">
                   <span class="datum-icon">∠</span>
                   <label for="inputB">∠B₁ =</label>
-                  <input id="inputB" name="angleB" inputmode="decimal" value="47,77" autocomplete="off">
+                  <input id="inputB" name="angleB" inputmode="decimal" value="47,77" placeholder="Falta el dato" autocomplete="off">
                   <span class="unit">°</span>
                 </div>
                 <div class="data-row angle-row green">
                   <span class="datum-icon">∠</span>
                   <label for="inputF">∠F =</label>
-                  <input id="inputF" name="angleF" inputmode="decimal" value="57,83" autocomplete="off">
+                  <input id="inputF" name="angleF" inputmode="decimal" value="57,83" placeholder="Falta el dato" autocomplete="off">
                   <span class="unit">°</span>
                 </div>
                 <div class="data-row angle-row red optional-row">
                   <span class="datum-icon">∠</span>
                   <label for="inputA">∠A escrito =</label>
-                  <input id="inputA" name="angleA" inputmode="decimal" value="97,66" autocomplete="off">
+                  <input id="inputA" name="angleA" inputmode="decimal" value="" placeholder="Se calcula" autocomplete="off">
                   <span class="unit">°</span>
                 </div>
                 <p class="field-note">El ángulo A es opcional: GeoPaso lo compara con el valor calculado.</p>
+
+                <details class="extra-data" id="extraDataDetails">
+                  <summary>Agregar otra medida del dibujo</summary>
+                  <p>Usalo si el ejercicio da AD, BF u otra longitud diferente. No hace falta completar todas.</p>
+                  <div class="extra-data-grid">
+                    <label for="inputAC">AC <span><input id="inputAC" name="AC" inputmode="decimal" placeholder="?"> cm</span></label>
+                    <label for="inputCB">CB <span><input id="inputCB" name="CB" inputmode="decimal" placeholder="?"> cm</span></label>
+                    <label for="inputDB">DB <span><input id="inputDB" name="DB" inputmode="decimal" placeholder="?"> cm</span></label>
+                    <label for="inputAD">AD <span><input id="inputAD" name="AD" inputmode="decimal" placeholder="?"> cm</span></label>
+                    <label for="inputEB">EB <span><input id="inputEB" name="EB" inputmode="decimal" placeholder="?"> cm</span></label>
+                    <label for="inputBF">BF <span><input id="inputBF" name="BF" inputmode="decimal" placeholder="?"> cm</span></label>
+                    <label for="inputEF">EF <span><input id="inputEF" name="EF" inputmode="decimal" placeholder="?"> cm</span></label>
+                  </div>
+                </details>
 
                 <div id="formMessage" class="form-message" role="alert" hidden></div>
                 <button class="primary-button" id="solveButton" type="submit">

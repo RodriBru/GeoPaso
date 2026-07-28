@@ -11,8 +11,18 @@
     DE: 5.16,
     angleB: 47.77,
     angleF: 57.83,
-    angleA: 97.66
+    angleA: null,
+    AC: null,
+    CB: null,
+    DB: null,
+    AD: null,
+    EB: null,
+    BF: null,
+    EF: null
   };
+
+  const ANGLE_TOLERANCE = 0.05;
+  const GIVEN_ANGLE_TOLERANCE = 0.5;
 
   const state = {
     result: null,
@@ -36,7 +46,14 @@
       DE: $("#inputDE"),
       angleB: $("#inputB"),
       angleF: $("#inputF"),
-      angleA: $("#inputA")
+      angleA: $("#inputA"),
+      AC: $("#inputAC"),
+      CB: $("#inputCB"),
+      DB: $("#inputDB"),
+      AD: $("#inputAD"),
+      EB: $("#inputEB"),
+      BF: $("#inputBF"),
+      EF: $("#inputEF")
     },
     svg: $("#geometrySvg"),
     zoomLayer: $("#zoomLayer"),
@@ -89,7 +106,7 @@
 
   function parseLocaleNumber(value, optional = false) {
     const clean = String(value ?? "").trim().replace(/\s/g, "").replace(",", ".");
-    if (!clean && optional) return null;
+    if (!clean) return optional ? null : NaN;
     const parsed = Number(clean);
     return Number.isFinite(parsed) ? parsed : NaN;
   }
@@ -106,32 +123,205 @@
   }
 
   function readInputs() {
+    return Object.fromEntries(Object.entries(elements.inputs).map(([key, input]) => [key, parseLocaleNumber(input.value, true)]));
+  }
+
+  function isKnown(value) {
+    return Number.isFinite(value) && value > 0;
+  }
+
+  function dataIssue(type, message) {
+    return { type, message };
+  }
+
+  function valuesMatch(written, calculated, isAngle = false) {
+    const tolerance = isAngle ? GIVEN_ANGLE_TOLERANCE : Math.max(0.05, Math.abs(calculated) * 0.005);
+    return Math.abs(written - calculated) <= tolerance;
+  }
+
+  function completeGeometryData(raw) {
+    const preparationNotes = [];
+    const lengthKeys = ["AB", "DC", "DE", "AC", "CB", "DB", "AD", "EB", "BF", "EF"];
+    for (const key of lengthKeys) {
+      if (raw[key] !== null && (!Number.isFinite(raw[key]) || raw[key] <= 0)) {
+        return { issue: dataIssue("error", `${key} debe ser una longitud mayor que cero. Revisá la coma decimal o un posible signo menos.`) };
+      }
+    }
+    for (const [key, label, maximum] of [["angleB", "B₁", 90], ["angleF", "F", 90], ["angleA", "A", 180]]) {
+      if (raw[key] !== null && (!Number.isFinite(raw[key]) || raw[key] <= 0 || raw[key] >= maximum)) {
+        const explanation = key === "angleB"
+          ? "C ya mide 90°; si B₁ mide 90° o más, esos dos ángulos solos ya suman 180° o más y no queda lugar para el tercero."
+          : `El ángulo ${label} debe estar entre 0° y ${maximum}° para esta figura.`;
+        return { issue: dataIssue("error", `${explanation} Revisá el número o el ángulo elegido.`) };
+      }
+    }
+
+    let AB, AC, CB, angleB;
+    if (isKnown(raw.AB) && isKnown(raw.angleB)) {
+      AB = raw.AB; angleB = raw.angleB;
+      AC = AB * Math.sin(degToRad(angleB));
+      CB = AB * Math.cos(degToRad(angleB));
+    } else if (isKnown(raw.AC) && isKnown(raw.CB)) {
+      AC = raw.AC; CB = raw.CB;
+      AB = Math.hypot(AC, CB);
+      angleB = radToDeg(Math.atan2(AC, CB));
+      preparationNotes.push(`Con AC y CB usamos Pitágoras para hallar AB, y luego calculamos B₁.`);
+    } else if (isKnown(raw.AB) && isKnown(raw.AC)) {
+      if (raw.AC >= raw.AB) return { issue: dataIssue("error", "En el triángulo ACB, AB es la hipotenusa y debe ser mayor que AC.") };
+      AB = raw.AB; AC = raw.AC;
+      CB = Math.sqrt(AB ** 2 - AC ** 2);
+      angleB = radToDeg(Math.asin(AC / AB));
+      preparationNotes.push(`Con AB y AC usamos Pitágoras para hallar CB, y luego calculamos B₁.`);
+    } else if (isKnown(raw.AB) && isKnown(raw.CB)) {
+      if (raw.CB >= raw.AB) return { issue: dataIssue("error", "En el triángulo ACB, AB es la hipotenusa y debe ser mayor que CB.") };
+      AB = raw.AB; CB = raw.CB;
+      AC = Math.sqrt(AB ** 2 - CB ** 2);
+      angleB = radToDeg(Math.acos(CB / AB));
+      preparationNotes.push(`Con AB y CB usamos Pitágoras para hallar AC, y luego calculamos B₁.`);
+    } else if (isKnown(raw.AC) && isKnown(raw.angleB)) {
+      AC = raw.AC; angleB = raw.angleB;
+      AB = AC / Math.sin(degToRad(angleB));
+      CB = AB * Math.cos(degToRad(angleB));
+      preparationNotes.push(`Con AC y B₁ calculamos primero la hipotenusa AB y después CB.`);
+    } else if (isKnown(raw.CB) && isKnown(raw.angleB)) {
+      CB = raw.CB; angleB = raw.angleB;
+      AB = CB / Math.cos(degToRad(angleB));
+      AC = AB * Math.sin(degToRad(angleB));
+      preparationNotes.push(`Con CB y B₁ calculamos primero la hipotenusa AB y después AC.`);
+    } else {
+      return { issue: dataIssue("incomplete", "Faltan datos en el triángulo ACB. Escribí dos datos independientes: por ejemplo AB y B₁, dos lados, o un cateto y B₁.") };
+    }
+
+    let DC;
+    const angleCAB = 90 - angleB;
+    if (isKnown(raw.DC)) {
+      DC = raw.DC;
+    } else if (isKnown(raw.AD)) {
+      if (raw.AD <= AC) return { issue: dataIssue("error", "AD es la hipotenusa del triángulo ACD y debe ser mayor que AC.") };
+      DC = Math.sqrt(raw.AD ** 2 - AC ** 2);
+      preparationNotes.push(`Como AD es dato, usamos DC = √(AD² − AC²).`);
+    } else if (isKnown(raw.DB)) {
+      DC = raw.DB - CB;
+      if (DC <= 0) return { issue: dataIssue("error", "DB debe ser mayor que CB porque DB = DC + CB.") };
+      preparationNotes.push(`Como DB es dato, usamos DC = DB − CB.`);
+    } else if (isKnown(raw.angleA)) {
+      const angleDAC = raw.angleA - angleCAB;
+      if (angleDAC <= 0 || angleDAC >= 90) {
+        return { issue: dataIssue("error", `Con B₁ = ${formatNumber(angleB)}°, el ángulo A no puede ser ${formatNumber(raw.angleA)}°. Revisá si A corresponde al ángulo completo.`) };
+      }
+      DC = AC * Math.tan(degToRad(angleDAC));
+      preparationNotes.push(`Con el ángulo A hallamos ∠DAC y usamos tangente para calcular DC.`);
+    } else {
+      return { issue: dataIssue("incomplete", "Ya resolvimos ACB, pero falta ubicar el punto D. Escribí DC, AD, DB o el ángulo A.") };
+    }
+
+    const AD = Math.hypot(AC, DC);
+    const DB = DC + CB;
+    let DE;
+    if (isKnown(raw.DE)) {
+      DE = raw.DE;
+    } else if (isKnown(raw.EB)) {
+      if (raw.EB <= DB) return { issue: dataIssue("error", "EB es la hipotenusa del triángulo DBE y debe ser mayor que DB.") };
+      DE = Math.sqrt(raw.EB ** 2 - DB ** 2);
+      preparationNotes.push(`Como EB es dato, usamos DE = √(EB² − DB²).`);
+    } else {
+      return { issue: dataIssue("incomplete", "Falta ubicar el punto E. Escribí DE o la diagonal EB.") };
+    }
+
+    const EB = Math.hypot(DB, DE);
+    let angleF, EF, BF;
+    if (isKnown(raw.angleF)) {
+      angleF = raw.angleF;
+      const horizontalBF = DE / Math.tan(degToRad(angleF));
+      EF = DB + horizontalBF;
+      BF = Math.hypot(horizontalBF, DE);
+    } else if (isKnown(raw.EF)) {
+      EF = raw.EF;
+      const horizontalBF = EF - DB;
+      if (horizontalBF <= 0) return { issue: dataIssue("error", "Para esta figura, EF debe llegar más a la derecha que B; por eso EF debe ser mayor que DB.") };
+      BF = Math.hypot(horizontalBF, DE);
+      angleF = radToDeg(Math.atan2(DE, horizontalBF));
+      preparationNotes.push(`Como EF es dato, usamos la diferencia horizontal EF − DB para calcular BF y el ángulo F.`);
+    } else if (isKnown(raw.BF)) {
+      BF = raw.BF;
+      if (BF <= DE) return { issue: dataIssue("error", "BF debe ser mayor que la altura DE para alcanzar el punto F en esta figura.") };
+      const horizontalBF = Math.sqrt(BF ** 2 - DE ** 2);
+      EF = DB + horizontalBF;
+      angleF = radToDeg(Math.atan2(DE, horizontalBF));
+      preparationNotes.push(`Como BF es dato, usamos Pitágoras para hallar su avance horizontal; después calculamos EF y el ángulo F.`);
+    } else {
+      return { issue: dataIssue("incomplete", "Falta ubicar el punto F. Escribí el ángulo F, el lado BF o el lado EF.") };
+    }
+
+    const calculated = { AB, AC, CB, DC, DB, AD, DE, EB, BF, EF, angleB, angleF };
+    for (const key of Object.keys(calculated)) {
+      if (isKnown(raw[key]) && !valuesMatch(raw[key], calculated[key], key.startsWith("angle"))) {
+        const unit = key.startsWith("angle") ? "°" : " cm";
+        return { issue: dataIssue("error", `${key === "angleB" ? "B₁" : key === "angleF" ? "F" : key} = ${formatNumber(raw[key])}${unit} contradice a los demás datos; debería ser aproximadamente ${formatNumber(calculated[key])}${unit}. Revisá qué número fue copiado o detectado incorrectamente.`) };
+      }
+    }
+
+    const calculatedA = angleCAB + radToDeg(Math.atan2(DC, AC));
+    if (isKnown(raw.angleA) && !valuesMatch(raw.angleA, calculatedA, true)) {
+      return { issue: dataIssue("error", `A = ${formatNumber(raw.angleA)}° contradice a los demás datos; debería ser aproximadamente ${formatNumber(calculatedA)}°. Revisá A, B₁ o las longitudes cercanas.`) };
+    }
+
     return {
-      AB: parseLocaleNumber(elements.inputs.AB.value),
-      DC: parseLocaleNumber(elements.inputs.DC.value),
-      DE: parseLocaleNumber(elements.inputs.DE.value),
-      angleB: parseLocaleNumber(elements.inputs.angleB.value),
-      angleF: parseLocaleNumber(elements.inputs.angleF.value),
-      angleA: parseLocaleNumber(elements.inputs.angleA.value, true)
+      data: {
+        AB, DC, DE, angleB, angleF,
+        angleA: raw.angleA,
+        given: Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, isKnown(value)])),
+        preparationNotes
+      }
     };
   }
 
-  function validateData(data) {
-    const errors = [];
-    for (const key of ["AB", "DC", "DE"]) {
-      if (!Number.isFinite(data[key]) || data[key] <= 0) {
-        errors.push(`${key} debe ser una longitud mayor que cero.`);
-      }
+  function triangleError(name, sides, angles) {
+    if (sides.some(side => !Number.isFinite(side) || side <= 0)) {
+      return `El triángulo ${name} produce una longitud imposible. Revisá que las medidas estén completas y sean mayores que cero.`;
     }
-    for (const [key, label] of [["angleB", "El ángulo B₁"], ["angleF", "El ángulo F"]]) {
-      if (!Number.isFinite(data[key]) || data[key] <= 0 || data[key] >= 90) {
-        errors.push(`${label} debe estar entre 0° y 90° para esta figura.`);
-      }
+
+    if (angles.some(angle => !Number.isFinite(angle) || angle <= ANGLE_TOLERANCE || angle >= 180 - ANGLE_TOLERANCE)) {
+      return `El triángulo ${name} queda aplastado o tiene un ángulo imposible. Revisá los ángulos escritos.`;
     }
-    if (data.angleA !== null && (!Number.isFinite(data.angleA) || data.angleA <= 0 || data.angleA >= 180)) {
-      errors.push("El ángulo A escrito debe estar entre 0° y 180°, o quedar vacío.");
+
+    const angleSum = angles.reduce((sum, angle) => sum + angle, 0);
+    if (Math.abs(angleSum - 180) > ANGLE_TOLERANCE) {
+      return `Los ángulos del triángulo ${name} suman ${formatNumber(angleSum)}°. Deben sumar 180°. Revisá los ángulos escritos.`;
     }
-    return errors;
+
+    const [a, b, c] = [...sides].sort((left, right) => left - right);
+    if (a + b <= c) {
+      return `Las longitudes del triángulo ${name} no pueden formar un triángulo: los dos lados menores deben sumar más que el mayor.`;
+    }
+
+    return "";
+  }
+
+  function validateSolvedGeometry(result) {
+    const { data, lengths: l, angles: a } = result;
+    const checks = [
+      triangleError("ACB", [l.AC, l.CB, data.AB], [a.angleCAB, data.angleB, 90]),
+      triangleError("ACD", [l.AC, data.DC, l.AD], [a.angleDAC, 90, 90 - a.angleDAC]),
+      triangleError("DBE", [l.DB, data.DE, l.EB], [90, a.angleCBE, a.angleDEB]),
+      triangleError("EBF", [l.EB, l.BF, l.EF], [a.angleBEF, a.angleEBF, data.angleF])
+    ];
+    const triangleProblem = checks.find(Boolean);
+    if (triangleProblem) return triangleProblem;
+
+    if (!Number.isFinite(result.perimeter) || !Number.isFinite(result.areas.total)) {
+      return "Las medidas producen un resultado demasiado grande o imposible de calcular. Revisá si agregaste cifras de más.";
+    }
+
+    if (Math.abs(a.angleSum - 540) > ANGLE_TOLERANCE) {
+      return `Los ángulos de la figura suman ${formatNumber(a.angleSum)}°. Un pentágono debe sumar 540°. Revisá los datos escritos.`;
+    }
+
+    if (result.consistency.differenceA !== null && result.consistency.differenceA > GIVEN_ANGLE_TOLERANCE) {
+      return `El ángulo A escrito (${formatNumber(result.consistency.expectedA)}°) contradice a las demás medidas: debería ser aproximadamente ${formatNumber(result.consistency.calculatedA)}°. Revisá A, B₁, AB o DC. Si A es la incógnita, dejá esa casilla vacía.`;
+    }
+
+    return "";
   }
 
   function solveGeometry(data) {
@@ -187,7 +377,7 @@
 
   function createSteps(result) {
     const { data, lengths: l, angles: a, areas } = result;
-    return [
+    const steps = [
       {
         title: "Resolvemos el triángulo ACB",
         known: `AB mide ${formatNumber(data.AB)} cm, el ángulo B₁ mide ${formatNumber(data.angleB)}° y C es un ángulo recto de 90°.`,
@@ -283,7 +473,7 @@
           { text: "△ DEB", tone: "green" },
           { text: "△ EBF", tone: "orange" }
         ],
-        description: "Calculamos el área de cada triángulo y luego las sumamos. Para los rectángulos usamos base × altura ÷ 2; para EBF usamos dos lados y el seno del ángulo comprendido.",
+        description: "Calculamos el área de cada triángulo y luego las sumamos. Para los triángulos rectángulos usamos base × altura ÷ 2; para EBF usamos dos lados y el seno del ángulo comprendido.",
         rule: "Área de triángulo = base × altura ÷ 2\nÁrea total = A₁ + A₂ + A₃",
         mathRule: String.raw`A_{\triangle}=\frac{b\cdot h}{2}\qquad A_{\mathrm{total}}=A_1+A_2+A_3`,
         mathWork: String.raw`\begin{aligned} A_{ADB}&\approx ${texNumber(areas.areaADB)}\ \mathrm{cm^2}\\ A_{DEB}&\approx ${texNumber(areas.areaDEB)}\ \mathrm{cm^2}\\ A_{EBF}&\approx ${texNumber(areas.areaEBF)}\ \mathrm{cm^2}\\[4pt] A_{\mathrm{total}}&=${texNumber(areas.areaADB)}+${texNumber(areas.areaDEB)}+${texNumber(areas.areaEBF)}\\ &\approx \color{#7352d9}{${texNumber(areas.total)}\ \mathrm{cm^2}} \end{aligned}`,
@@ -310,6 +500,20 @@
         measureHighlight: ["angleA", "angleB", "angleF"]
       }
     ];
+    if (!data.preparationNotes?.length) return steps;
+    return [{
+      title: "Completamos los datos equivalentes",
+      known: "El ejercicio dio una combinación diferente de medidas, pero suficiente para reconstruir la misma figura.",
+      givens: [{ text: "Datos ingresados manualmente", tone: "blue" }],
+      description: "Antes del procedimiento principal, transformamos esos datos con relaciones válidas de los triángulos. No inventamos ninguna medida.",
+      rule: "Usamos Pitágoras, razones trigonométricas y sumas o restas de segmentos.",
+      mathRule: "",
+      mathWork: "",
+      formula: data.preparationNotes.join("\n\n"),
+      result: "Ya tenemos la información equivalente necesaria para continuar paso a paso.",
+      highlight: ["outerShape"],
+      measureHighlight: Object.keys(data.given || {}).filter(key => data.given[key])
+    }, ...steps];
   }
 
   function schematicPoints() {
@@ -368,11 +572,13 @@
   }
 
   function addEditableMeasure(text, x, y, className, inputKey, anchor = "middle") {
-    const node = addText(elements.labels, text, x, y, `${className} editable-measure`, anchor);
+    const missing = text.includes("?");
+    const node = addText(elements.labels, text, x, y, `${className} editable-measure ${missing ? "is-missing" : ""}`, anchor);
     node.dataset.inputKey = inputKey;
+    node.dataset.missing = String(missing);
     node.setAttribute("role", "button");
     node.setAttribute("tabindex", "0");
-    node.setAttribute("aria-label", `Editar ${inputKey}: ${text}`);
+    node.setAttribute("aria-label", missing ? `Falta ${inputKey}. Tocar para escribir el dato.` : `Editar ${inputKey}: ${text}`);
     return node;
   }
 
@@ -384,6 +590,10 @@
 
   function midpoint(p1, p2, dx = 0, dy = 0) {
     return { x: (p1.x + p2.x) / 2 + dx, y: (p1.y + p2.y) / 2 + dy };
+  }
+
+  function inputMeasureText(label, value, unit) {
+    return Number.isFinite(value) ? `${label} = ${formatNumber(value)}${unit}` : `${label} = ?${unit}`;
   }
 
   function arcPath(vertex, point1, point2, radius) {
@@ -441,6 +651,9 @@
     addRightMarker(elements.rightAngles, p.C, -1, -1);
     addRightMarker(elements.rightAngles, p.D, 1, 1);
     addRightMarker(elements.rightAngles, p.E, 1, -1);
+    addText(elements.rightAngles, "90°", p.C.x - 39, p.C.y - 25, "right-angle-text");
+    addText(elements.rightAngles, "90°", p.D.x + 42, p.D.y + 35, "right-angle-text");
+    addText(elements.rightAngles, "90°", p.E.x + 42, p.E.y - 20, "right-angle-text");
 
     elements.angleArcs.replaceChildren();
     const angleAPath = svgElement("path", { id: "angleArcA", d: arcPath(p.A, p.D, p.B, 43), class: "angle-path a" });
@@ -453,15 +666,17 @@
     const abLabel = midpoint(p.A, p.B, 28, -12);
     const dcLabel = midpoint(p.D, p.C, 0, -14);
     const deLabel = midpoint(p.D, p.E, -20, 5);
-    addEditableMeasure(`${formatNumber(data.AB)} cm`, abLabel.x, abLabel.y, "measure-text", "AB");
-    addEditableMeasure(`${formatNumber(data.DC)} cm`, dcLabel.x, dcLabel.y, "measure-text", "DC");
-    addEditableMeasure(`${formatNumber(data.DE)} cm`, deLabel.x, deLabel.y, "measure-text", "DE", "end");
-    addEditableMeasure(`${formatNumber(data.angleB)}°`, p.B.x - 77, p.B.y - 19, "measure-text angle-b", "angleB");
-    addEditableMeasure(`${formatNumber(data.angleF)}°`, p.F.x - 62, p.F.y - 24, "measure-text angle-f", "angleF");
+    addEditableMeasure(inputMeasureText("AB", data.AB, " cm"), abLabel.x, abLabel.y, "measure-text", "AB");
+    addEditableMeasure(inputMeasureText("DC", data.DC, " cm"), dcLabel.x, dcLabel.y, "measure-text", "DC");
+    addEditableMeasure(inputMeasureText("DE", data.DE, " cm"), deLabel.x, deLabel.y, "measure-text", "DE", "end");
+    addEditableMeasure(inputMeasureText("B₁", data.angleB, "°"), p.B.x - 77, p.B.y - 19, "measure-text angle-b", "angleB");
+    addEditableMeasure(inputMeasureText("F", data.angleF, "°"), p.F.x - 62, p.F.y - 24, "measure-text angle-f", "angleF");
     if (data.angleA !== null && Number.isFinite(data.angleA)) {
-      addEditableMeasure(`${formatNumber(data.angleA)}°`, p.A.x, p.A.y + 72, "measure-text angle-a", "angleA");
+      addEditableMeasure(inputMeasureText("A", data.angleA, "°"), p.A.x, p.A.y + 72, "measure-text angle-a", "angleA");
     } else if (state.result) {
-      addText(elements.labels, `${formatNumber(state.result.angles.angleA)}°`, p.A.x, p.A.y + 72, "measure-text angle-a");
+      addEditableMeasure(`A ≈ ${formatNumber(state.result.angles.angleA)}°`, p.A.x, p.A.y + 72, "measure-text angle-a calculated-measure", "angleA");
+    } else {
+      addEditableMeasure("A = ?°", p.A.x, p.A.y + 72, "measure-text angle-a", "angleA");
     }
     if (state.result) {
       const l = state.result.lengths;
@@ -471,21 +686,34 @@
       const acLabel = midpoint(p.A, p.C, 30, 0);
       const cbLabel = midpoint(p.C, p.B, 0, 27);
       const ebLabel = midpoint(p.E, p.B, 12, -16);
-      addCalculatedMeasure(`AD ≈ ${formatNumber(l.AD)} cm`, adLabel.x, adLabel.y, "AD");
-      addCalculatedMeasure(`BF ≈ ${formatNumber(l.BF)} cm`, bfLabel.x, bfLabel.y, "BF");
-      addCalculatedMeasure(`EF ≈ ${formatNumber(l.EF)} cm`, efLabel.x, efLabel.y, "EF");
-      addCalculatedMeasure(`AC ≈ ${formatNumber(l.AC)} cm`, acLabel.x, acLabel.y, "AC", "start");
-      addCalculatedMeasure(`CB ≈ ${formatNumber(l.CB)} cm`, cbLabel.x, cbLabel.y, "CB");
-      addCalculatedMeasure(`EB ≈ ${formatNumber(l.EB)} cm`, ebLabel.x, ebLabel.y, "EB");
-      addCalculatedMeasure(`DB ≈ ${formatNumber(l.DB)} cm`, p.C.x - 65, p.C.y - 42, "DB");
+      addEditableMeasure(`AD ≈ ${formatNumber(l.AD)} cm`, adLabel.x, adLabel.y, "measure-text calculated-measure", "AD");
+      addEditableMeasure(`BF ≈ ${formatNumber(l.BF)} cm`, bfLabel.x, bfLabel.y, "measure-text calculated-measure", "BF");
+      addEditableMeasure(`EF ≈ ${formatNumber(l.EF)} cm`, efLabel.x, efLabel.y, "measure-text calculated-measure", "EF");
+      addEditableMeasure(`AC ≈ ${formatNumber(l.AC)} cm`, acLabel.x, acLabel.y, "measure-text calculated-measure", "AC", "start");
+      addEditableMeasure(`CB ≈ ${formatNumber(l.CB)} cm`, cbLabel.x, cbLabel.y, "measure-text calculated-measure", "CB");
+      addEditableMeasure(`EB ≈ ${formatNumber(l.EB)} cm`, ebLabel.x, ebLabel.y, "measure-text calculated-measure", "EB");
+      addEditableMeasure(`DB ≈ ${formatNumber(l.DB)} cm`, p.C.x - 65, p.C.y - 42, "measure-text calculated-measure", "DB");
+    } else {
+      const pendingLabels = [
+        [inputMeasureText("AD", data.AD, " cm"), midpoint(p.A, p.D, -18, -12), "AD"],
+        [inputMeasureText("BF", data.BF, " cm"), midpoint(p.B, p.F, 28, 0), "BF"],
+        [inputMeasureText("EF", data.EF, " cm"), midpoint(p.E, p.F, 0, 28), "EF"],
+        [inputMeasureText("AC", data.AC, " cm"), midpoint(p.A, p.C, 30, 0), "AC", "start"],
+        [inputMeasureText("CB", data.CB, " cm"), midpoint(p.C, p.B, 0, 27), "CB"],
+        [inputMeasureText("EB", data.EB, " cm"), midpoint(p.E, p.B, 12, -16), "EB"],
+        [inputMeasureText("DB", data.DB, " cm"), { x: p.C.x - 65, y: p.C.y - 42 }, "DB"]
+      ];
+      pendingLabels.forEach(([text, position, key, anchor]) => {
+        const node = addEditableMeasure(text, position.x, position.y, "measure-text calculated-measure", key, anchor || "middle");
+        if (text.includes("?")) node.classList.add("pending-measure");
+      });
     }
 
     bindPointDragging();
   }
 
   function readInputsSafe() {
-    const data = readInputs();
-    return Object.fromEntries(Object.entries(defaults).map(([key, fallback]) => [key, Number.isFinite(data[key]) ? data[key] : fallback]));
+    return readInputs();
   }
 
   function bindPointDragging() {
@@ -606,23 +834,84 @@
     });
   }
 
-  function setFormError(message) {
+  function setFormError(message, type = "error") {
     elements.formMessage.textContent = message;
     elements.formMessage.hidden = !message;
+    elements.formMessage.classList.toggle("is-incomplete", Boolean(message) && type === "incomplete");
+  }
+
+  function clearCalculatedOutput(subtitle) {
+    elements.perimeterResult.textContent = "—";
+    elements.areaResult.textContent = "—";
+    elements.angleResults.innerHTML = "<span>∠A = —</span><span>∠B = —</span><span>∠D = —</span><span>∠E = —</span><span>∠F = —</span><span>Suma = —</span>";
+    elements.measurementGrid.innerHTML = "";
+    elements.consistencyWarning.hidden = true;
+    elements.resultSubtitle.textContent = subtitle;
+    elements.printButton.disabled = true;
+  }
+
+  function blockSolution(message) {
+    state.result = null;
+    state.steps = [];
+    state.currentStep = 0;
+    setFormError(message);
+    clearCalculatedOutput("No mostramos resultados porque los datos no forman una figura válida.");
+    elements.stepBadge.textContent = "Revisá los datos";
+    elements.stepTitle.textContent = "No podemos empezar todavía";
+    renderKnownChips([{ text: "Hay datos incompatibles", tone: "red" }]);
+    elements.stepDescription.textContent = message;
+    elements.stepRule.textContent = "Primero corregí el dato señalado. Después GeoPaso volverá a comprobar toda la figura.";
+    elements.stepFormula.textContent = "No realizamos cuentas con datos matemáticamente imposibles.";
+    elements.stepResult.textContent = "No hay un resultado válido hasta corregir los datos.";
+    elements.stepDots.replaceChildren();
+    elements.previousStep.disabled = true;
+    elements.nextStep.disabled = true;
+    state.points = schematicPoints();
+    renderFigure();
+    updateProgress(2);
+    showToast("No se puede resolver: revisá el mensaje rojo.");
+  }
+
+  function showIncomplete(message) {
+    state.result = null;
+    state.steps = [];
+    state.currentStep = 0;
+    setFormError(message, "incomplete");
+    clearCalculatedOutput("Todavía faltan datos; no significa que el ejercicio esté mal.");
+    elements.stepBadge.textContent = "Faltan datos";
+    elements.stepTitle.textContent = "La figura todavía no está determinada";
+    renderKnownChips([{ text: "Información insuficiente", tone: "orange" }]);
+    elements.stepDescription.textContent = message;
+    elements.stepRule.textContent = "Agregá uno de los datos sugeridos. GeoPaso recién comprobará las reglas cuando haya información suficiente.";
+    elements.stepFormula.textContent = "Faltan datos ≠ datos incorrectos";
+    elements.stepResult.textContent = "Todavía puede existir una figura válida, pero no hay una única respuesta.";
+    elements.stepDots.replaceChildren();
+    elements.previousStep.disabled = true;
+    elements.nextStep.disabled = true;
+    state.points = schematicPoints();
+    renderFigure();
+    updateProgress(2);
+    showToast("Faltan datos para obtener una respuesta única.");
   }
 
   function solve(event) {
     event?.preventDefault();
-    const data = readInputs();
-    const errors = validateData(data);
-    if (errors.length) {
-      setFormError(errors[0]);
-      updateProgress(2);
+    const rawData = readInputs();
+    const completion = completeGeometryData(rawData);
+    if (completion.issue) {
+      if (completion.issue.type === "incomplete") showIncomplete(completion.issue.message);
+      else blockSolution(completion.issue.message);
       return;
     }
 
     try {
+      const data = completion.data;
       const result = solveGeometry(data);
+      const geometryError = validateSolvedGeometry(result);
+      if (geometryError) {
+        blockSolution(geometryError);
+        return;
+      }
       state.result = result;
       state.steps = createSteps(result);
       state.currentStep = 0;
@@ -638,7 +927,7 @@
       showToast("Figura resuelta. Empezamos por el primer triángulo.");
       $("#explanationPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
     } catch (error) {
-      setFormError(error.message || "No pudimos resolver la figura con estos datos.");
+      blockSolution(error.message || "No pudimos resolver la figura con estos datos. Revisá las medidas ingresadas.");
     }
   }
 
@@ -661,7 +950,7 @@
 
   function resetExample() {
     Object.entries(defaults).forEach(([key, value]) => {
-      elements.inputs[key].value = String(value).replace(".", ",");
+      elements.inputs[key].value = value === null ? "" : String(value).replace(".", ",");
     });
     state.result = null;
     state.steps = [];
@@ -705,8 +994,15 @@
     const text = elements.promptInput.value.replace(/,/g, ".");
     const patterns = {
       AB: /\bAB\s*(?:=|mide|:)\s*(\d+(?:\.\d+)?)/i,
+      AC: /\bAC\s*(?:=|mide|:)\s*(\d+(?:\.\d+)?)/i,
+      CB: /\bCB\s*(?:=|mide|:)\s*(\d+(?:\.\d+)?)/i,
       DC: /\bDC\s*(?:=|mide|:)\s*(\d+(?:\.\d+)?)/i,
+      DB: /\bDB\s*(?:=|mide|:)\s*(\d+(?:\.\d+)?)/i,
+      AD: /\bAD\s*(?:=|mide|:)\s*(\d+(?:\.\d+)?)/i,
       DE: /\bDE\s*(?:=|mide|:)\s*(\d+(?:\.\d+)?)/i,
+      EB: /\bEB\s*(?:=|mide|:)\s*(\d+(?:\.\d+)?)/i,
+      BF: /\bBF\s*(?:=|mide|:)\s*(\d+(?:\.\d+)?)/i,
+      EF: /\b(?:EF|FE)\s*(?:=|mide|:)\s*(\d+(?:\.\d+)?)/i,
       angleB: /(?:∠\s*B|ángulo\s+B|angulo\s+B|B₁)\s*(?:=|mide|:)\s*(\d+(?:\.\d+)?)/i,
       angleF: /(?:∠\s*F|ángulo\s+F|angulo\s+F)\s*(?:=|mide|:)\s*(\d+(?:\.\d+)?)/i,
       angleA: /(?:∠\s*A|ángulo\s+A|angulo\s+A)\s*(?:=|mide|:)\s*(\d+(?:\.\d+)?)/i
@@ -717,11 +1013,26 @@
       if (match) {
         elements.inputs[key].value = match[1].replace(".", ",");
         found++;
+      } else {
+        elements.inputs[key].value = "";
       }
     });
     state.result = null;
+    state.steps = [];
     state.points = schematicPoints();
     renderFigure();
+    setFormError("");
+    clearCalculatedOutput(found ? "Completá los datos marcados con “?” y después resolvé." : "No detectamos datos suficientes. Completalos manualmente.");
+    elements.stepBadge.textContent = "Datos detectados";
+    elements.stepTitle.textContent = found ? "Revisá lo que encontramos" : "Completá los datos a mano";
+    renderKnownChips([{ text: found ? `${found} dato${found === 1 ? "" : "s"} encontrado${found === 1 ? "" : "s"}` : "Faltan datos", tone: found ? "green" : "orange" }]);
+    elements.stepDescription.textContent = "Las casillas y etiquetas con “?” no fueron detectadas. Tocá cada una para escribir su valor.";
+    elements.stepRule.textContent = "GeoPaso no comenzará las cuentas hasta que estén todos los datos necesarios.";
+    elements.stepFormula.textContent = "Dato detectado = número visible. Dato faltante = ?";
+    elements.stepResult.textContent = "Revisá los datos antes de resolver.";
+    elements.stepDots.replaceChildren();
+    elements.previousStep.disabled = true;
+    elements.nextStep.disabled = true;
     updateProgress(2);
     showToast(found ? `Detectamos ${found} dato${found === 1 ? "" : "s"}. Revisalos antes de resolver.` : "No encontré medidas con nombre. Probá escribir, por ejemplo: AB = 9,37.");
   }
@@ -773,6 +1084,9 @@
   function focusEditableInput(key) {
     const input = elements.inputs[key];
     if (!input) return;
+    if (["AC", "CB", "DB", "AD", "EB", "BF", "EF"].includes(key)) {
+      $("#extraDataDetails").open = true;
+    }
     $("#dataPanel").scrollIntoView({ behavior: "smooth", block: "center" });
     $$(".data-row").forEach(row => row.classList.toggle("is-editing", row.contains(input)));
     input.focus({ preventScroll: true });
@@ -803,10 +1117,22 @@
       });
       input.addEventListener("input", () => {
         state.result = null;
+        state.steps = [];
         state.points = state.toScale ? scaledPoints(null) : schematicPoints();
         renderFigure();
+        setFormError("");
+        clearCalculatedOutput("Cambiaste un dato. Recalculá para actualizar los resultados.");
+        elements.stepBadge.textContent = "Datos modificados";
+        elements.stepTitle.textContent = "Volvé a comprobar la figura";
+        renderKnownChips([{ text: "Datos todavía sin comprobar", tone: "orange" }]);
+        elements.stepDescription.textContent = "Cambiaste una medida. Los pasos anteriores dejaron de ser válidos.";
+        elements.stepRule.textContent = "Tocá “Recalcular paso a paso” para revisar primero si la figura es matemáticamente posible.";
+        elements.stepFormula.textContent = "No mostramos cuentas antiguas después de cambiar un dato.";
+        elements.stepResult.textContent = "Todavía no hay un resultado válido.";
+        elements.stepDots.replaceChildren();
+        elements.previousStep.disabled = true;
+        elements.nextStep.disabled = true;
         elements.solveButton.innerHTML = '<span aria-hidden="true">↻</span> Recalcular paso a paso';
-        elements.resultSubtitle.textContent = "Cambiaste un dato. Recalculá para actualizar los resultados.";
         updateProgress(2);
       });
     });
