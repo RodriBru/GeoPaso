@@ -39,6 +39,13 @@
     pinchStartDistance: 0,
     pinchStartZoom: 1,
     pinchActive: false,
+    pinchStartMidpoint: null,
+    pinchStartPanX: 0,
+    pinchStartPanY: 0,
+    panX: 0,
+    panY: 0,
+    singlePan: null,
+    panActive: false,
     suppressNextClick: false,
     uploadedImageUrl: null
   };
@@ -1017,14 +1024,15 @@
     state.toScale = false;
     state.drawMode = false;
     state.zoom = 1;
+    state.panX = 0;
+    state.panY = 0;
     state.activePointers.clear();
     state.pinchActive = false;
     closeInlineMeasureEditor();
     elements.scaleButton.setAttribute("aria-pressed", "false");
     elements.dragHelper.hidden = true;
     elements.figureModeLabel.textContent = "Esquema claro del ejercicio";
-    elements.zoomLayer.style.transform = "scale(1)";
-    elements.zoomLayer.style.transformOrigin = "center";
+    applyFigureTransform();
     elements.perimeterResult.textContent = "—";
     elements.areaResult.textContent = "—";
     elements.angleResults.innerHTML = "<span>∠A = —</span><span>∠B = —</span><span>∠D = —</span><span>∠E = —</span><span>∠F = —</span><span>Suma = —</span>";
@@ -1215,22 +1223,51 @@
     elements.figureTip.textContent = `Editando ${key}. Escribí la medida correcta y tocá “Recalcular paso a paso”.`;
   }
 
+  function clampPan() {
+    const rect = elements.svg.getBoundingClientRect();
+    const maxX = Math.max(0, rect.width * (state.zoom - 1) / (2 * state.zoom));
+    const maxY = Math.max(0, rect.height * (state.zoom - 1) / (2 * state.zoom));
+    state.panX = Math.max(-maxX, Math.min(maxX, state.panX));
+    state.panY = Math.max(-maxY, Math.min(maxY, state.panY));
+  }
+
+  function applyFigureTransform() {
+    clampPan();
+    elements.zoomLayer.style.transformOrigin = "center";
+    elements.zoomLayer.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.zoom})`;
+    elements.diagramStage.classList.toggle("can-pan", state.zoom > 1.01);
+  }
+
+  function pointerMidpoint(first, second) {
+    return { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
+  }
+
   function bindEvents() {
     elements.svg.addEventListener("pointerdown", event => {
       if (event.pointerType !== "touch") return;
       state.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
       try { elements.svg.setPointerCapture(event.pointerId); } catch (_) { /* no-op */ }
+      if (state.activePointers.size === 1 && state.zoom > 1.01 && !state.drawMode) {
+        state.singlePan = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          panX: state.panX,
+          panY: state.panY
+        };
+        state.panActive = false;
+      }
       if (state.activePointers.size === 2) {
         const [first, second] = [...state.activePointers.values()];
         state.pinchStartDistance = Math.hypot(second.x - first.x, second.y - first.y);
         state.pinchStartZoom = state.zoom;
+        state.pinchStartMidpoint = pointerMidpoint(first, second);
+        state.pinchStartPanX = state.panX;
+        state.pinchStartPanY = state.panY;
         state.pinchActive = true;
+        state.singlePan = null;
         state.draggedPoint = null;
         closeInlineMeasureEditor();
-        const rect = elements.svg.getBoundingClientRect();
-        const middleX = (first.x + second.x) / 2 - rect.left;
-        const middleY = (first.y + second.y) / 2 - rect.top;
-        elements.zoomLayer.style.transformOrigin = `${middleX / rect.width * 100}% ${middleY / rect.height * 100}%`;
         elements.diagramStage.classList.add("is-pinching");
       }
     });
@@ -1244,11 +1281,33 @@
         const distance = Math.hypot(second.x - first.x, second.y - first.y);
         if (state.pinchStartDistance > 0) {
           state.zoom = Math.max(.65, Math.min(2.5, state.pinchStartZoom * distance / state.pinchStartDistance));
-          elements.zoomLayer.style.transform = `scale(${state.zoom})`;
-          elements.figureModeLabel.textContent = `Zoom ${Math.round(state.zoom * 100)}% · usá dos dedos`;
+          const midpoint = pointerMidpoint(first, second);
+          state.panX = state.pinchStartPanX + midpoint.x - state.pinchStartMidpoint.x;
+          state.panY = state.pinchStartPanY + midpoint.y - state.pinchStartMidpoint.y;
+          applyFigureTransform();
+          elements.figureModeLabel.textContent = `Zoom ${Math.round(state.zoom * 100)}% · mové la figura con los dedos`;
+          elements.figureTip.textContent = "Podés ampliar y desplazar al mismo tiempo con dos dedos.";
         }
         event.preventDefault();
         return;
+      }
+      if (state.singlePan && state.singlePan.pointerId === event.pointerId && state.zoom > 1.01 && !state.drawMode) {
+        const dx = event.clientX - state.singlePan.startX;
+        const dy = event.clientY - state.singlePan.startY;
+        if (!state.panActive && Math.hypot(dx, dy) > 6) {
+          state.panActive = true;
+          state.suppressNextClick = true;
+          closeInlineMeasureEditor();
+          elements.diagramStage.classList.add("is-panning");
+        }
+        if (state.panActive) {
+          state.panX = state.singlePan.panX + dx;
+          state.panY = state.singlePan.panY + dy;
+          applyFigureTransform();
+          elements.figureTip.textContent = "Figura desplazada. Seguí arrastrando para recorrerla o tocá ⌗ para centrar.";
+          event.preventDefault();
+          return;
+        }
       }
       if (!state.drawMode || !state.draggedPoint) return;
       const point = clientToSvg(event.clientX, event.clientY);
@@ -1263,8 +1322,15 @@
       if (state.pinchActive && state.activePointers.size < 2) {
         state.pinchActive = false;
         state.pinchStartDistance = 0;
+        state.pinchStartMidpoint = null;
         state.suppressNextClick = true;
         elements.diagramStage.classList.remove("is-pinching");
+        setTimeout(() => { state.suppressNextClick = false; }, 350);
+      }
+      if (state.singlePan?.pointerId === event.pointerId || state.panActive) {
+        state.singlePan = null;
+        state.panActive = false;
+        elements.diagramStage.classList.remove("is-panning");
         setTimeout(() => { state.suppressNextClick = false; }, 350);
       }
       state.draggedPoint = null;
@@ -1273,8 +1339,12 @@
     elements.svg.addEventListener("pointercancel", event => {
       state.activePointers.delete(event.pointerId);
       state.draggedPoint = null;
+      state.singlePan = null;
+      state.panActive = false;
+      elements.diagramStage.classList.remove("is-panning");
       if (state.activePointers.size < 2) {
         state.pinchActive = false;
+        state.pinchStartMidpoint = null;
         elements.diagramStage.classList.remove("is-pinching");
       }
     });
@@ -1328,18 +1398,22 @@
 
     $("#zoomInButton").addEventListener("click", () => {
       state.zoom = Math.min(2.5, state.zoom + .15);
-      elements.zoomLayer.style.transform = `scale(${state.zoom})`;
+      applyFigureTransform();
+      elements.figureModeLabel.textContent = `Zoom ${Math.round(state.zoom * 100)}% · arrastrá para recorrer`;
     });
     $("#zoomOutButton").addEventListener("click", () => {
       state.zoom = Math.max(.65, state.zoom - .15);
-      elements.zoomLayer.style.transform = `scale(${state.zoom})`;
+      applyFigureTransform();
+      elements.figureModeLabel.textContent = `Zoom ${Math.round(state.zoom * 100)}%`;
     });
     $("#fitButton").addEventListener("click", () => {
       state.zoom = 1;
-      elements.zoomLayer.style.transform = "scale(1)";
-      elements.zoomLayer.style.transformOrigin = "center";
+      state.panX = 0;
+      state.panY = 0;
+      applyFigureTransform();
       state.points = state.toScale ? scaledPoints(state.result) : schematicPoints();
       renderFigure();
+      elements.figureModeLabel.textContent = state.toScale ? "Vista proporcional a las medidas" : "Esquema claro del ejercicio";
     });
 
     elements.scaleButton.addEventListener("click", () => {
