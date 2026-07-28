@@ -28,7 +28,7 @@
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   margin: 0;
   min-width: 320px;
@@ -381,7 +381,7 @@ body.learning-mode { padding-bottom: 0; }
 body.learning-mode .page-grid, body.learning-mode .mobile-wizard-nav { display: none !important; }
 body.learning-mode .topbar { grid-template-columns: 1fr; }
 body.learning-mode .topbar .progress, body.learning-mode .topbar .top-actions { display: none; }
-.learning-panel { width: min(980px, calc(100% - 28px)); margin: 22px auto 34px; }
+.learning-panel { width: min(980px, calc(100% - 28px)); min-width: 0; margin: 22px auto 34px; }
 .learning-header { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 20px; }
 .learning-header button { min-height: 42px; padding: 8px 13px; border: 1px solid var(--line); border-radius: 11px; background: #fff; color: var(--primary); cursor: pointer; font-weight: 800; }
 .learning-header > div { text-align: right; }
@@ -392,19 +392,23 @@ body.learning-mode .topbar .progress, body.learning-mode .topbar .top-actions { 
 .learning-progress button { height: 7px; border: 0; border-radius: 10px; background: #dce4f2; cursor: pointer; }
 .learning-progress button.is-complete { background: #8db2ff; }
 .learning-progress button.is-active { background: var(--primary); }
-.lesson-card { display: grid; grid-template-columns: minmax(280px, .85fr) minmax(0, 1.4fr); min-height: 580px; overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: #fff; box-shadow: var(--shadow); }
-.lesson-visual { min-height: 100%; display: grid; place-items: center; padding: 28px; background: linear-gradient(145deg, #eaf2ff, #f8f4ff); }
+.lesson-card { display: grid; grid-template-columns: minmax(280px, .85fr) minmax(0, 1.4fr); min-width: 0; max-width: 100%; min-height: 580px; overflow: hidden; border: 1px solid var(--line); border-radius: 22px; background: #fff; box-shadow: var(--shadow); }
+.lesson-visual { min-width: 0; min-height: 100%; display: grid; place-items: center; padding: 28px; background: linear-gradient(145deg, #eaf2ff, #f8f4ff); }
 .lesson-visual svg { width: 100%; max-width: 330px; max-height: 360px; }
-.lesson-content { padding: clamp(24px, 4vw, 48px); }
+.lesson-content { min-width: 0; max-width: 100%; padding: clamp(24px, 4vw, 48px); }
 .lesson-level { display: inline-flex; padding: 5px 9px; border-radius: 8px; background: var(--primary-soft); color: var(--primary); font-size: .68rem; font-weight: 850; text-transform: uppercase; }
-.lesson-content h1 { margin: 13px 0 9px; font-size: clamp(1.65rem, 3vw, 2.35rem); letter-spacing: -.045em; }
-.lesson-intro { margin: 0; color: #56627b; line-height: 1.65; }
-.lesson-key { margin-top: 18px; padding: 13px 15px; border-left: 4px solid var(--green); border-radius: 6px 11px 11px 6px; background: var(--green-soft); color: #176849; font-weight: 750; line-height: 1.5; }
-.lesson-example { margin-top: 18px; padding: 15px; border: 1px solid #ccdaf0; border-radius: 13px; background: repeating-linear-gradient(to bottom,#fff 0,#fff 27px,#e3ecfa 28px); }
+.lesson-content h1 { max-width: 100%; margin: 13px 0 9px; font-size: clamp(1.65rem, 3vw, 2.35rem); letter-spacing: -.045em; overflow-wrap: anywhere; }
+.lesson-intro { max-width: 100%; margin: 0; color: #56627b; line-height: 1.65; overflow-wrap: anywhere; }
+.lesson-key { min-width: 0; max-width: 100%; margin-top: 18px; padding: 13px 15px; border-left: 4px solid var(--green); border-radius: 6px 11px 11px 6px; background: var(--green-soft); color: #176849; font-weight: 750; line-height: 1.5; overflow-wrap: anywhere; }
+.lesson-example { min-width: 0; max-width: 100%; margin-top: 18px; padding: 15px; overflow: hidden; border: 1px solid #ccdaf0; border-radius: 13px; background: repeating-linear-gradient(to bottom,#fff 0,#fff 27px,#e3ecfa 28px); }
 .lesson-example > span { color: var(--primary); font-size: .68rem; font-weight: 850; text-transform: uppercase; }
-#lessonFormula { margin-top: 10px; color: #1d3f84; text-align: center; font-family: ui-monospace, monospace; font-size: 1rem; font-weight: 800; white-space: pre-line; }
-#lessonExplanation { margin: 10px 0 0; color: #4d5870; font-size: .8rem; line-height: 1.55; }
-.lesson-check { margin-top: 15px; padding: 11px 13px; border-radius: 11px; background: #fff7e9; color: #88560d; font-size: .78rem; line-height: 1.5; }
+#lessonFormula { min-width: 0; max-width: 100%; margin-top: 10px; color: #1d3f84; text-align: center; font-family: ui-monospace, monospace; font-size: 1rem; font-weight: 800; white-space: pre-line; overflow-wrap: anywhere; }
+#lessonFormula .katex-display { max-width: 100%; margin: .35em 0; overflow-x: auto; overflow-y: hidden; padding: 3px 0 7px; }
+#lessonFormula .katex { max-width: 100%; font-size: .94em; }
+#lessonExplanation { max-width: 100%; margin: 10px 0 0; color: #4d5870; font-size: .8rem; line-height: 1.55; overflow-wrap: anywhere; }
+.lesson-check { max-width: 100%; margin-top: 15px; padding: 11px 13px; border-radius: 11px; background: #fff7e9; color: #88560d; font-size: .78rem; line-height: 1.5; overflow-wrap: anywhere; }
+
+.step-copy, .explanation-block, .math-rule, .formula, .result-card, .warning-card > div, .footer-tip > span:last-child { min-width: 0; max-width: 100%; }
 .lesson-controls { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; }
 .lesson-controls button { min-width: 145px; min-height: 48px; padding: 10px 15px; border-radius: 12px; border: 1px solid var(--line); background: #fff; cursor: pointer; font-weight: 850; }
 .lesson-controls #nextLessonButton { border-color: var(--primary); background: var(--primary); color: #fff; }
@@ -496,13 +500,15 @@ body.learning-mode .topbar .progress, body.learning-mode .topbar .top-actions { 
   .learning-panel { width: 100%; margin: 0; padding: 10px 10px 86px; }
   .learning-header { position: sticky; top: 0; z-index: 10; margin: -10px -10px 0; padding: 10px; background: rgba(255,255,255,.96); }
   .learning-header button { font-size: .7rem; }
-  .lesson-card { grid-template-columns: 1fr; min-height: 0; border-radius: 17px; }
+  .lesson-card { grid-template-columns: minmax(0, 1fr); min-height: 0; border-radius: 17px; }
   .lesson-visual { min-height: 210px; padding: 15px; }
   .lesson-visual svg { max-height: 205px; }
-  .lesson-content { padding: 20px 18px 24px; }
-  .lesson-content h1 { font-size: 1.7rem; }
-  .lesson-controls { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; margin: 0; padding: 9px 10px calc(9px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.97); border-top: 1px solid var(--line); }
-  .lesson-controls button { min-width: 0; flex: 1; }
+  .lesson-content { min-width: 0; padding: 20px 18px 24px; }
+  .lesson-content h1 { font-size: clamp(1.45rem, 7.3vw, 1.7rem); line-height: 1.12; }
+  #lessonFormula { font-size: .9rem; }
+  #lessonFormula .katex { font-size: .86em; }
+  .lesson-controls { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: minmax(104px, .82fr) minmax(0, 1.18fr); margin: 0; padding: 9px 10px calc(9px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.97); border-top: 1px solid var(--line); }
+  .lesson-controls button { min-width: 0; width: 100%; padding-inline: 8px; font-size: .82rem; line-height: 1.2; }
   .step-card { grid-template-columns: 1fr; }
   .mini-diagram { display: none; }
   .mini-diagram { display: none; }

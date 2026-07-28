@@ -68,7 +68,7 @@
       intro: "Estas razones permiten conectar un ángulo con los lados de un triángulo rectángulo. Siempre se nombran respecto del ángulo que estamos mirando.",
       key: "SOH–CAH–TOA: seno = opuesto/hipotenusa; coseno = adyacente/hipotenusa; tangente = opuesto/adyacente.",
       formula: "sen(θ) = opuesto ÷ hipotenusa\ncos(θ) = adyacente ÷ hipotenusa\ntan(θ) = opuesto ÷ adyacente",
-      math: String.raw`\operatorname{sen}(\theta)=\frac{\mathrm{opuesto}}{\mathrm{hipotenusa}}\quad \cos(\theta)=\frac{\mathrm{adyacente}}{\mathrm{hipotenusa}}`,
+      math: String.raw`\begin{aligned}\operatorname{sen}(\theta)&=\frac{\mathrm{opuesto}}{\mathrm{hipotenusa}}\\[4pt]\cos(\theta)&=\frac{\mathrm{adyacente}}{\mathrm{hipotenusa}}\\[4pt]\tan(\theta)&=\frac{\mathrm{opuesto}}{\mathrm{adyacente}}\end{aligned}`,
       explanation: "Marcá el ángulo θ. El lado que no lo toca es el opuesto; el cateto que sí lo toca es el adyacente.",
       check: "No memorices solo letras: mirá el dibujo y nombrá primero hipotenusa, opuesto y adyacente.",
       visual: "trig"
@@ -92,7 +92,7 @@
       intro: "El área mide la superficie interior. En una figura compuesta calculamos cada región sin superponerlas y luego sumamos.",
       key: "Una respuesta completa incluye unidades: longitudes en cm y áreas en cm².",
       formula: "Área del triángulo = base × altura ÷ 2\nÁrea total = A₁ + A₂ + A₃",
-      math: String.raw`A_{\triangle}=\frac{b\cdot h}{2}\qquad A_{\mathrm{total}}=A_1+A_2+A_3`,
+      math: String.raw`\begin{aligned}A_{\triangle}&=\frac{b\cdot h}{2}\\[4pt]A_{\mathrm{total}}&=A_1+A_2+A_3\end{aligned}`,
       explanation: "Al terminar, comprobá ángulos, longitudes posibles, unidades y si el resultado coincide aproximadamente con el dibujo.",
       check: "Ya podés volver al solucionador: GeoPaso te mostrará estas mismas ideas aplicadas a tu ejercicio.",
       visual: "area"
