@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="es-UY">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="GeoPaso: resolvé figuras geométricas paso a paso con una interfaz clara y amigable.">
+  <title>GeoPaso · Geometría paso a paso</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css" integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB" crossorigin="anonymous">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="GeoPaso, inicio">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" role="img">
+            <path d="M15 39 24 7l9 32M11 28h26M18 18h12" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="24" cy="7" r="3.5" fill="white" stroke="currentColor" stroke-width="2.5"/>
+          </svg>
+        </span>
+        <span>
+          <strong>GeoPaso</strong>
+          <small>Resolvé figuras paso a paso</small>
+        </span>
+      </a>
+
+      <nav class="progress" aria-label="Progreso de resolución">
+        <button class="progress-step is-active" data-progress="1" type="button">
+          <span>1</span><small>Figura</small>
+        </button>
+        <i aria-hidden="true"></i>
+        <button class="progress-step" data-progress="2" type="button">
+          <span>2</span><small>Datos</small>
+        </button>
+        <i aria-hidden="true"></i>
+        <button class="progress-step" data-progress="3" type="button">
+          <span>3</span><small>Pasos</small>
+        </button>
+        <i aria-hidden="true"></i>
+        <button class="progress-step" data-progress="4" type="button">
+          <span>4</span><small>Resultado</small>
+        </button>
+      </nav>
+
+      <div class="top-actions">
+        <div class="reassurance">
+          <span aria-hidden="true">☺</span>
+          <p><strong>No te preocupes:</strong><br>te explicamos cada cuenta</p>
+        </div>
+        <button class="student-button" type="button" aria-label="Perfil del estudiante">
+          <span class="avatar" aria-hidden="true">●</span>
+          <span>Estudiante</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="page-grid">
+      <aside class="left-rail">
+        <section class="panel load-panel">
+          <div class="section-title">
+            <span>1.</span>
+            <div>
+              <h1>Cargá o dibujá<br>la figura</h1>
+              <p>Podés usar la foto como referencia y completar los datos legibles.</p>
+            </div>
+          </div>
+
+          <div class="preview-card" id="previewCard">
+            <img id="photoThumbnail" src="assets/ejercicio-referencia.jpg" alt="Foto original del ejercicio de geometría">
+            <div class="preview-shade"></div>
+            <span>Foto de referencia</span>
+          </div>
+
+          <input id="photoInput" type="file" accept="image/*" hidden>
+          <div class="stacked-actions">
+            <button class="soft-button blue" id="usePhotoButton" type="button">
+              <span aria-hidden="true">▣</span> Usar otra foto
+            </button>
+            <button class="soft-button green" id="drawButton" type="button">
+              <span aria-hidden="true">✎</span> Ajustar dibujo
+            </button>
+            <button class="soft-button amber" id="exampleButton" type="button">
+              <span aria-hidden="true">▤</span> Reiniciar ejemplo
+            </button>
+          </div>
+
+          <details class="prompt-details">
+            <summary>Escribir la consigna</summary>
+            <label for="promptInput">Podés pegar algo como: “AB = 9,37; DC = 6,92; ángulo B = 47,77°”.</label>
+            <textarea id="promptInput" rows="5">1) Hallá todos los ángulos.
+2) Calculá el perímetro de ABFED.
+3) Calculá el área de la figura.</textarea>
+            <button id="detectDataButton" class="text-button" type="button">Detectar datos escritos</button>
+          </details>
+        </section>
+
+        <button class="scale-card" id="scaleButton" type="button" aria-pressed="false">
+          <span class="scale-icon" aria-hidden="true">⌁</span>
+          <span><strong>Ver a escala</strong><small>Mostrá las medidas proporcionalmente.</small></span>
+          <span class="switch" aria-hidden="true"><i></i></span>
+        </button>
+      </aside>
+
+      <div class="main-content">
+        <div class="work-grid">
+          <section class="panel figure-panel" id="figurePanel">
+            <div class="panel-heading">
+              <div>
+                <h2>Figura</h2>
+                <p id="figureModeLabel">Esquema claro del ejercicio</p>
+              </div>
+              <div class="icon-actions" aria-label="Controles de la figura">
+                <button id="zoomInButton" type="button" title="Acercar" aria-label="Acercar">＋</button>
+                <button id="zoomOutButton" type="button" title="Alejar" aria-label="Alejar">−</button>
+                <button id="fitButton" type="button" title="Centrar" aria-label="Centrar">⌗</button>
+              </div>
+            </div>
+
+            <div class="figure-tabs" role="tablist" aria-label="Vista de la figura">
+              <button class="figure-tab is-active" id="diagramTab" role="tab" aria-selected="true" type="button">Diagrama</button>
+              <button class="figure-tab" id="photoTab" role="tab" aria-selected="false" type="button">Foto original</button>
+            </div>
+
+            <div class="stage" id="diagramStage">
+              <svg id="geometrySvg" viewBox="0 0 760 520" role="img" aria-labelledby="svgTitle svgDesc">
+                <title id="svgTitle">Figura geométrica ABFED</title>
+                <desc id="svgDesc">Pentágono con construcciones auxiliares, medidas y ángulos editables.</desc>
+                <g id="zoomLayer">
+                  <polygon id="outerShape" class="shape-fill selectable" data-name="Figura ABFED" points=""/>
+
+                  <g class="construction-lines">
+                    <line id="lineAC" class="geo-line construction selectable" data-name="Altura AC"/>
+                    <line id="lineDB" class="geo-line construction selectable" data-name="Segmento DB"/>
+                    <line id="lineEB" class="geo-line construction selectable" data-name="Diagonal EB"/>
+                  </g>
+
+                  <g class="outer-lines">
+                    <line id="lineAB" class="geo-line selectable" data-name="Lado AB"/>
+                    <line id="lineBF" class="geo-line selectable" data-name="Lado BF"/>
+                    <line id="lineFE" class="geo-line selectable" data-name="Lado FE"/>
+                    <line id="lineED" class="geo-line selectable" data-name="Lado ED"/>
+                    <line id="lineDA" class="geo-line selectable" data-name="Lado DA"/>
+                  </g>
+
+                  <g id="rightAngles" class="right-angles" aria-hidden="true"></g>
+                  <g id="angleArcs" class="angle-arcs" aria-hidden="true"></g>
+                  <g id="measureLabels" class="measure-labels"></g>
+                  <g id="pointLayer" class="point-layer"></g>
+                </g>
+              </svg>
+
+              <div class="drag-helper" id="dragHelper" hidden>
+                <strong>Modo ajuste</strong>
+                <span>Arrastrá los puntos para acomodar el dibujo. Los cálculos siguen usando los datos de la derecha.</span>
+              </div>
+            </div>
+
+            <div class="photo-stage" id="photoStage" hidden>
+              <img id="photoViewer" src="assets/ejercicio-referencia.jpg" alt="Foto original ampliada">
+              <p>Usá esta vista para leer la consigna. La resolución se realiza con los datos cargados.</p>
+            </div>
+
+            <div class="tip-bar" id="figureTip" role="status">
+              <span aria-hidden="true">💡</span>
+              <span>Hacé clic en un lado, un ángulo o un punto para resaltarlo.</span>
+            </div>
+          </section>
+
+          <aside class="right-column">
+            <section class="panel data-panel" id="dataPanel">
+              <div class="section-title compact">
+                <span>2.</span>
+                <div><h2>Datos conocidos</h2><p>Editá cualquier casilla o tocá una medida en el dibujo.</p></div>
+              </div>
+
+              <form id="dataForm" novalidate>
+                <div class="data-row length-row">
+                  <span class="datum-icon">▥</span>
+                  <label for="inputAB">AB =</label>
+                  <input id="inputAB" name="AB" inputmode="decimal" value="9,37" autocomplete="off">
+                  <span class="unit">cm</span>
+                </div>
+                <div class="data-row length-row">
+                  <span class="datum-icon">▥</span>
+                  <label for="inputDC">DC =</label>
+                  <input id="inputDC" name="DC" inputmode="decimal" value="6,92" autocomplete="off">
+                  <span class="unit">cm</span>
+                </div>
+                <div class="data-row length-row">
+                  <span class="datum-icon">▥</span>
+                  <label for="inputDE">DE =</label>
+                  <input id="inputDE" name="DE" inputmode="decimal" value="5,16" autocomplete="off">
+                  <span class="unit">cm</span>
+                </div>
+                <div class="data-row angle-row orange">
+                  <span class="datum-icon">∠</span>
+                  <label for="inputB">∠B₁ =</label>
+                  <input id="inputB" name="angleB" inputmode="decimal" value="47,77" autocomplete="off">
+                  <span class="unit">°</span>
+                </div>
+                <div class="data-row angle-row green">
+                  <span class="datum-icon">∠</span>
+                  <label for="inputF">∠F =</label>
+                  <input id="inputF" name="angleF" inputmode="decimal" value="57,83" autocomplete="off">
+                  <span class="unit">°</span>
+                </div>
+                <div class="data-row angle-row red optional-row">
+                  <span class="datum-icon">∠</span>
+                  <label for="inputA">∠A escrito =</label>
+                  <input id="inputA" name="angleA" inputmode="decimal" value="97,66" autocomplete="off">
+                  <span class="unit">°</span>
+                </div>
+                <p class="field-note">El ángulo A es opcional: GeoPaso lo compara con el valor calculado.</p>
+
+                <div id="formMessage" class="form-message" role="alert" hidden></div>
+                <button class="primary-button" id="solveButton" type="submit">
+                  <span aria-hidden="true">▶</span> Resolver paso a paso
+                </button>
+              </form>
+            </section>
+
+            <section class="panel explanation-panel" id="explanationPanel">
+              <div class="section-title compact">
+                <span>3.</span>
+                <div><h2>Explicación</h2><p>Una cuenta por vez, sin saltos mágicos.</p></div>
+              </div>
+
+              <div class="step-card" id="stepCard">
+                <div class="step-copy">
+                  <span class="step-badge" id="stepBadge">Antes de empezar</span>
+                  <h3 id="stepTitle">Revisamos los datos</h3>
+                  <div class="explanation-block">
+                    <span class="explanation-label">1. Qué sabemos</span>
+                    <div class="known-chips" id="stepKnown">
+                      <span class="known-chip tone-blue">AB, DC y DE</span>
+                      <span class="known-chip tone-orange">Ángulos dados</span>
+                    </div>
+                  </div>
+                  <div class="explanation-block">
+                    <span class="explanation-label">2. Cómo lo pensamos</span>
+                    <p id="stepDescription">Vamos a dividir la figura grande en triángulos más sencillos.</p>
+                  </div>
+                  <div class="explanation-block">
+                    <span class="explanation-label">3. Elegimos la fórmula</span>
+                    <div class="math-rule" id="stepRule">Elegimos la relación que conecta los datos con la incógnita.</div>
+                  </div>
+                  <div class="explanation-block">
+                    <span class="explanation-label">4. Reemplazamos y calculamos</span>
+                    <div class="formula" id="stepFormula">Primero identificamos qué triángulo podemos resolver.</div>
+                  </div>
+                  <div class="step-conclusion" id="stepResult"><strong>Respuesta:</strong> después comprobaremos que el resultado tenga sentido.</div>
+                </div>
+                <svg class="mini-diagram" viewBox="0 0 150 110" aria-hidden="true">
+                  <path d="M34 89V19L126 89Z" fill="#e9f1ff" stroke="#2f6df6" stroke-width="2.2"/>
+                  <path d="M34 76h13v13" fill="none" stroke="#172039" stroke-width="2"/>
+                  <text x="27" y="18">A</text><text x="25" y="104">C</text><text x="130" y="104">B</text>
+                </svg>
+              </div>
+
+              <div class="step-controls">
+                <div class="step-dots" id="stepDots" aria-label="Pasos de la explicación"></div>
+                <div>
+                  <button class="secondary-button" id="previousStepButton" type="button" disabled>Anterior</button>
+                  <button class="primary-button small" id="nextStepButton" type="button" disabled>Siguiente paso →</button>
+                </div>
+              </div>
+            </section>
+          </aside>
+        </div>
+
+        <section class="panel results-panel" id="resultsPanel" aria-live="polite">
+          <div class="results-heading">
+            <div>
+              <span aria-hidden="true">🏆</span>
+              <div><h2>Resultados</h2><p id="resultSubtitle">Completá los datos y resolvé el ejercicio.</p></div>
+            </div>
+            <div class="result-actions">
+              <button class="print-button edit-data-button" id="editDataButton" type="button">✎ Editar datos</button>
+              <button class="print-button" id="printButton" type="button" disabled>Imprimir solución</button>
+            </div>
+          </div>
+
+          <div class="warning-card" id="consistencyWarning" hidden>
+            <span aria-hidden="true">⚠</span>
+            <div><strong>Hay un dato que no coincide.</strong><p id="consistencyText"></p></div>
+          </div>
+
+          <div class="result-grid">
+            <article class="result-card angles-card">
+              <div class="result-label"><span>∠</span><strong>Ángulos interiores</strong></div>
+              <div class="angle-results" id="angleResults">
+                <span>∠A = —</span><span>∠B = —</span><span>∠D = —</span><span>∠E = —</span><span>∠F = —</span><span>Suma = —</span>
+              </div>
+            </article>
+
+            <article class="result-card perimeter-card">
+              <div class="result-label"><span>▥</span><strong>Perímetro</strong></div>
+              <p>Perímetro aproximado</p>
+              <output id="perimeterResult">—</output>
+              <small>AB + BF + FE + ED + DA</small>
+            </article>
+
+            <article class="result-card area-card">
+              <div class="result-label"><span>□</span><strong>Área</strong></div>
+              <p>Área aproximada</p>
+              <output id="areaResult">—</output>
+              <small>Dividida en tres triángulos</small>
+            </article>
+          </div>
+
+          <details class="calculated-details" id="calculatedDetails">
+            <summary>Ver todas las medidas calculadas</summary>
+            <div class="measurement-grid" id="measurementGrid"></div>
+          </details>
+
+          <div class="footer-tip">
+            <span aria-hidden="true">☆</span>
+            <span>Podés cambiar cualquier dato y volver a resolver. La figura y las cuentas se actualizan sin recargar la página.</span>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js" integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs" crossorigin="anonymous"></script>
+  <script defer src="app.js"></script>
+</body>
+</html>
